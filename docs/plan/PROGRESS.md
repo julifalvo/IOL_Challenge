@@ -4,7 +4,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 
 | Spec | Estado | Tests locales | Databricks | Pendientes / notas |
 |---|---|---|---|---|
-| 00 Entorno | parcial: local OK | 10/10 passed (2026-10-31) | no ejecutado | Falta smoke test en Free Edition (spec 00) |
+| 00 Entorno | implementado; falta Databricks | 32/32 passed (2026-10-31) | no ejecutado | ⏳ correr `00_setup` y `00_smoke_test` en Free Edition y volcar resultados en ADR-001/008/011 |
 | 01 Profiling + arquitectura | pendiente | — | — | |
 | 02 Bronze | pendiente | — | — | |
 | 03 Silver + calidad | pendiente | — | — | |
@@ -49,3 +49,17 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
     - entorno OK → 10 passed;
     - sin `HADOOP_HOME` → `ERROR at setup` con causa real ("HADOOP_HOME and hadoop.home.dir are unset");
     - con la variable → 9 passed, 1 skipped "salteados deliberadamente".
+- 2026-10-31 — **Etapa 00 implementada (local).**
+  - Código:
+    - `config.MARKET_HOLIDAYS` con fuente oficial: JSON de feriados de argentina.gob.ar, 6 feriados entre 2025-12-01 y 2026-03-31. El 23/03 (no laborable turístico) queda excluido porque BYMA operó. — ADR-003
+    - `io.py`: `table_name`, `landing_path`, `ensure_schemas`, `write_delta_merge` (solo insert, claves null-safe, falla ante claves repetidas en el origen). — ADR-002
+    - `smoke.py`: chequeo de egress.
+    - Notebooks `00_setup`, `00_smoke_test` y `00_smoke_test_child`.
+    - Tabla nueva `iol_ops.smoke_test_results`. — `data_model.md`
+  - Fixture `tests/fixtures/trades_small.csv`: 40 filas sintéticas con todos los casos del spec más positivos para DQ002/003/006/007/011/013. Catálogo de casos en `tests/fixtures/README.md`, verificado por `test_fixture_cases.py`.
+  - Se eliminó `config.table()`, que no se usaba y duplicaba a `io.table_name()`. `LANDING_VOLUME` pasa a `io.landing_path()` para que respete el widget `catalog`.
+  - Criterios de aceptación:
+    - ✅ `pytest -q` corre localmente: 32 passed.
+    - ✅ El fixture cubre todos los casos.
+    - ⏳ Notebook 00 corre en Free Edition: **no ejecutado**.
+    - ⏳ Resultados del smoke test anotados en ADR-001/008/011: **no ejecutado**.

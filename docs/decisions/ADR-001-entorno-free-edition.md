@@ -16,6 +16,9 @@ Ejecutar en Free Edition respetando el espíritu de la restricción: costo cero,
 - La comparativa de cómputo (ADR-010) se mide en serverless y se extrapola a configuraciones productivas.
 
 ## Resultado del smoke test
+- **Cómo se obtiene:** corriendo `notebooks/00_setup.py` y `notebooks/00_smoke_test.py`. El detalle queda en `iol_ops.smoke_test_results`, filtrado por `smoke_run_id`.
+- **Estado:** no ejecutado todavía.
+
 | Prueba | Resultado | Fecha |
 |---|---|---|
 | Crear schema + volume | | |
