@@ -11,16 +11,13 @@ from datetime import date
 # --- Entorno -----------------------------------------------------------------
 CATALOG = os.environ.get("IOL_CATALOG", "workspace")
 SCHEMAS = {"bronze": "iol_bronze", "silver": "iol_silver", "gold": "iol_gold", "ops": "iol_ops"}
-LANDING_VOLUME = f"/Volumes/{CATALOG}/iol_bronze/landing"
+LANDING_VOLUME_NAME = "landing"  # Volume en iol_bronze; ruta: io.landing_path()
+LANDING_SUBDIRS = ("trades", "quotes", "ai")
 TZ_MARKET = "America/Argentina/Buenos_Aires"
 
 
 def is_databricks() -> bool:
     return "DATABRICKS_RUNTIME_VERSION" in os.environ
-
-
-def table(layer: str, name: str, catalog: str | None = None) -> str:
-    return f"{catalog or CATALOG}.{SCHEMAS[layer]}.{name}"
 
 
 # --- Versiones -----------------------------------------------------------------
@@ -44,14 +41,23 @@ CHANNELS = {
 }
 
 # --- Calendario (ADR-003) -----------------------------------------------------
-# Verificar contra el calendario oficial de BYMA y citar la fuente en ADR-003.
+# Feriados bursátiles = feriados nacionales (no los "días no laborables") en el rango de
+# dim_date (2025-12-01..2026-03-31). Fuente oficial: calendario de feriados nacionales de
+# Jefatura de Gabinete, https://www.argentina.gob.ar/jefatura/feriados-nacionales-2026
+# (datos: /sites/default/files/holidays-2025-es.json y holidays-2026-es.json), consultado 2026-10-31.
+# Excluidos a propósito: 2026-03-20 (no laborable, Ramadán) y 2026-03-23 (no laborable con fines
+# turísticos): BYMA operó ese día, sin liquidación (cierre registrado en
+# https://www.rava.com/cotizaciones/historico/byma/2026/03/23).
 MARKET_HOLIDAYS = {
+    date(2025, 12, 8): "Inmaculada Concepción de María",
+    date(2025, 12, 25): "Navidad",
     date(2026, 1, 1): "Año Nuevo",
     date(2026, 2, 16): "Carnaval",
     date(2026, 2, 17): "Carnaval",
-    date(2026, 3, 24): "Día de la Memoria",
-    # date(2026, 3, 23): "Feriado puente"  # VERIFICAR
+    date(2026, 3, 24): "Día Nacional de la Memoria por la Verdad y la Justicia",
 }
+CALENDAR_FROM = date(2025, 12, 1)
+CALENDAR_TO = date(2026, 3, 31)
 SESSION_HOURS_LOCAL = ("11:00", "17:00")
 DATA_CUTOFF = date(2026, 3, 13)
 
@@ -72,6 +78,17 @@ QUOTES_FROM = date(2025, 12, 15)
 QUOTES_TO = DATA_CUTOFF
 HTTP_TIMEOUT_S = 10
 HTTP_MAX_RETRIES = 3
+
+# --- Smoke test de entorno (spec 00; resultados en ADR-001/008/011) ----------------
+# Raíz de cada proveedor candidato de ADR-008: solo se prueba si el host es alcanzable.
+SMOKE_EGRESS_URLS = {
+    "iol_api": "https://api.invertironline.com",
+    "byma_open_data": "https://open.bymadata.com.ar",
+    "data912": "https://data912.com",
+    "yahoo_finance": "https://query1.finance.yahoo.com",
+}
+SMOKE_AI_MODEL = "databricks-meta-llama-3-3-70b-instruct"  # [SUPUESTO] cambiar por widget si no existe
+SMOKE_CHILD_TIMEOUT_S = 60
 
 # --- Segmentación SCD2 (ADR-007) -------------------------------------------------
 # Cortes congelados en seg_v1 a partir de p75/p90-p95/p99 de ops por cliente.

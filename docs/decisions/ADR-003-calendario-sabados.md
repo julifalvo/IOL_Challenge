@@ -18,6 +18,16 @@ Los registros de sábado son la cola de la jornada operativa del viernes (regist
 - Toda la analítica y el matching de cotizaciones usan `effective_trade_date`.
 - El análisis intradiario queda fuera de alcance; `DQ013_OUTSIDE_SESSION` solo como métrica INFO.
 
+## Calendario de feriados bursátiles (`config.MARKET_HOLIDAYS`)
+- **Regla:** feriado bursátil = feriado nacional (inamovible o trasladable). Los "días no laborables" no cuentan.
+- **Rango:** el de `dim_date`, 2025-12-01..2026-03-31.
+- **Fuente oficial:** calendario de Jefatura de Gabinete, [argentina.gob.ar/jefatura/feriados-nacionales-2026](https://www.argentina.gob.ar/jefatura/feriados-nacionales-2026). Los datos salen de los archivos `holidays-2025-es.json` y `holidays-2026-es.json`, consultados el 2026-10-31.
+- **Resultado:** 08/12/2025, 25/12/2025, 01/01/2026, 16/02/2026, 17/02/2026 y 24/03/2026.
+- **Excluidos a propósito:**
+  - 20/03/2026: no laborable por Ramadán, aplica solo a quienes profesan esa religión.
+  - 23/03/2026: no laborable con fines turísticos. BYMA operó ese día, sin liquidación porque no hubo actividad bancaria. Hay cierre registrado en [Rava](https://www.rava.com/cotizaciones/historico/byma/2026/03/23) [MEDIDO, fuente secundaria].
+- **Trade-off:** si algún día no laborable hubiera tenido el mercado cerrado, aparecería como "día sin cotización" (imputación de ADR-009), no como anomalía de calidad. Dentro del rango de los trades (02/01–13/03) no hay ninguno.
+
 ## Alternativas
 | Opción | Por qué no |
 |---|---|

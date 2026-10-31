@@ -132,3 +132,4 @@ Fila de versión inicial: `valid_from` = fecha de primera operación del cliente
 | `quote_coverage` | símbolo | symbol, currency_code, asset_type, provider_symbol, trades_total, trades_eligible, matched_exact, matched_imputed, unavailable, coverage_pct, last_error |
 | `ai_runs` | invocación | ai_run_id, component, prompt_version, model, input_hash, output_json, validation_status, created_at |
 | `instrument_mapping` | símbolo | tabla editable/versionada que alimenta dim_instrument (también en `src/iol_pipeline/mapping/overrides.csv`) |
+| `smoke_test_results` | run de smoke test × chequeo | smoke_run_id, check, status (OK/FAIL), detail, checked_at (TIMESTAMP UTC). Evidencia del entorno (spec 00); `MERGE` por (smoke_run_id, check) |
