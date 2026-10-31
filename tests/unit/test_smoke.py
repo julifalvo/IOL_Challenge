@@ -1,6 +1,8 @@
 """Tests de humo: el entorno local soporta Delta MERGE y la config es coherente."""
 from __future__ import annotations
 
+from datetime import date
+
 from iol_pipeline import config
 
 
@@ -34,6 +36,14 @@ def test_gate_thresholds_consistent():
     g = config.GATE_PARAMS
     assert g["unmapped_yellow_pct"] < g["unmapped_red_pct"]
     assert g["coverage_inconclusive_pct"] < g["coverage_green_pct"]
+
+
+def test_market_holidays_are_weekdays_inside_calendar_range():
+    for day in config.MARKET_HOLIDAYS:
+        assert config.CALENDAR_FROM <= day <= config.CALENDAR_TO
+        assert day.weekday() < 5
+    assert date(2026, 2, 16) in config.MARKET_HOLIDAYS and date(2026, 2, 17) in config.MARKET_HOLIDAYS
+    assert date(2026, 3, 23) not in config.MARKET_HOLIDAYS  # no laborable turístico: BYMA operó
 
 
 def test_contract_has_ten_columns():

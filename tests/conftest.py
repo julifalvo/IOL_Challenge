@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 
 SKIP_SPARK_ENV = "IOL_SKIP_SPARK_TESTS"
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
 def _startup_help(exc: BaseException) -> str:
@@ -78,6 +79,12 @@ def spark():
     yield session
     session.stop()
     shutil.rmtree(warehouse, ignore_errors=True)
+
+
+@pytest.fixture(scope="session")
+def trades_small_csv() -> Path:
+    """CSV sintético con los casos de borde del dataset (ver tests/fixtures/README.md)."""
+    return FIXTURES_DIR / "trades_small.csv"
 
 
 @pytest.fixture()
