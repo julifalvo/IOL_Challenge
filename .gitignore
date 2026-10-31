@@ -1,0 +1,33 @@
+# Datos originales y crudos de proveedores: NUNCA al repo
+data/raw/
+data/quotes_raw/
+data/ai_raw/
+*.csv
+!data/sample_obfuscated.csv
+!tests/fixtures/*.csv
+!src/iol_pipeline/mapping/*.csv
+
+# Secretos
+.env
+*.env
+.databrickscfg
+secrets/
+
+# Documento del challenge (subir solo si IOL lo autoriza)
+docs/plan/*.pdf
+
+# Python / Spark
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+spark-warehouse/
+metastore_db/
+derby.log
+reports/*.xml
+!reports/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+.DS_Store

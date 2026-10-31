@@ -1,0 +1,3 @@
+# Dependencias de runtime para notebooks en Databricks (serverless ya trae pyspark y delta).
+# Instalar en el notebook con: %pip install -r ../requirements.txt
+requests>=2.31

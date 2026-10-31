@@ -1,0 +1,10 @@
+# Desarrollo y tests locales (requiere Java 17+).
+# pyspark/delta-spark 4.0 para acercarse al runtime serverless (Spark 4).
+# Si hay problemas de compatibilidad: pyspark==3.5.* + delta-spark==3.2.*
+-r requirements.txt
+pyspark>=4.0,<4.1
+delta-spark>=4.0,<4.1
+pandas>=2.2
+pyarrow>=15
+scipy>=1.11
+pytest>=8
