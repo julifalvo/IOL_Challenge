@@ -11,11 +11,15 @@ from __future__ import annotations
 
 import re
 import sys
+from pathlib import Path
 
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from iol_pipeline import config
+
 TZ = "America/Argentina/Buenos_Aires"
-MARKET_HOLIDAYS = {"2026-01-01", "2026-02-16", "2026-02-17"}  # verificar contra calendario BYMA
+MARKET_HOLIDAYS = {day.isoformat() for day in config.MARKET_HOLIDAYS}
 
 
 def section(title: str) -> None:
