@@ -59,6 +59,17 @@ def test_merge_preserves_conflicting_version(spark, schema):
     assert sorted(r.record_hash for r in spark.table(target).collect()) == ["h1", "h1_fix"]
 
 
+def test_merge_discards_changes_when_key_does_not_determine_content(spark, schema):
+    target = f"{schema}.id_only"
+    io.write_delta_merge(spark, spark.createDataFrame([("T1", "h1", "a")], SCHEMA), target, ["trade_id"])
+
+    result = io.write_delta_merge(spark, spark.createDataFrame([("T1", "h2", "b")], SCHEMA), target, ["trade_id"])
+
+    # Por eso la clave de quien llama debe incluir el hash: acá el cambio se pierde sin aviso.
+    assert result == {"rows_source": 1, "rows_inserted": 0, "rows_already_present": 1}
+    assert spark.table(target).first().payload == "a"
+
+
 def test_merge_null_key_is_not_reinserted(spark, schema):
     target = f"{schema}.with_null_key"
     df = spark.createDataFrame([(None, "h1", "a")], SCHEMA)

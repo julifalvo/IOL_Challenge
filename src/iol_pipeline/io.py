@@ -47,6 +47,8 @@ def write_delta_merge(spark: SparkSession, df: DataFrame, target: str, keys: lis
     """Inserta en `target` las filas de `df` cuya clave no existe todavía (ADR-002).
 
     - Nunca actualiza ni borra: reejecutar con el mismo input inserta 0 filas.
+    - La clave tiene que determinar el contenido (p. ej. incluir `record_hash`). Si no, una fila con
+      la misma clave y otro contenido se descarta y se cuenta en `rows_already_present`, sin aviso.
     - Claves comparadas con `<=>` (null-safe), para que una clave nula no se reinserte en cada run.
     - Si `df` trae la misma clave más de una vez, falla: elegir una fila sería sobrescribir
       en silencio. Quien llama decide qué hacer con esos duplicados y los registra.
