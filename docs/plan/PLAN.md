@@ -17,7 +17,7 @@
 
 | Día | Bloque | Specs | Salida verificable |
 |---|---|---|---|
-| 1 AM | Entorno + riesgo cotizaciones | 00 | Smoke test Free Edition (Volume, UC, Git folder, egress, `ai_query`), mail a IOL enviado, spike de 4 proveedores con 8 símbolos |
+| 1 AM | Entorno + riesgo cotizaciones | 00 | Smoke test Free Edition (Volume, UC, Git folder, egress, `ai_query`), spike de 4 proveedores con 8 símbolos |
 | 1 PM | Profiling + base local | 01 | Notebook 01 con outputs; `pytest` corriendo; ADR-001..005 en estado "propuesto" |
 | 2 | Bronze + Silver + calidad | 02, 03 | Reejecución idempotente demostrada; reconciliación 100%; `quality_rules.md` final |
 | 3 AM | Instrumentos + IA clasificación | 04, 09 | `dim_instrument` con mapeo y escala; enriquecimiento IA cacheado |
@@ -34,7 +34,7 @@
 | Riesgo | Prob. | Impacto | Mitigación |
 |---|---|---|---|
 | Egress bloqueado en Free Edition | Alta | Alto (Task 04) | Fetcher local → Volume → Delta (ADR-008). Probar verificación LinkedIn |
-| Evaluador exige "Community Edition" literal | Baja | Medio | Consulta escrita a IOL día 1; ADR-001 |
+| Evaluador exige "Community Edition" literal | Baja | Medio | Desvío declarado en el README; ADR-001 |
 | Proveedor sin histórico para ONs/LECAPs | Alta | Medio | Cobertura parcial documentada; gate YELLOW, no RED; top 20 priorizado |
 | Escala de precio mal normalizada | Media | Alto (desvíos ×100) | Sanity check automático por símbolo (ratio mediano ≈ 1) |
 | SCD2 sin cambios reales | Baja | Alto | Snapshots mensuales sobre atributos derivados; verificar cambios en profiling |

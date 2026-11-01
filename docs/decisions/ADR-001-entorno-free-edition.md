@@ -1,6 +1,6 @@
 # ADR-001 — Databricks Free Edition como entorno de ejecución
 
-- **Estado:** propuesto (pendiente respuesta de IOL — `docs/plan/consulta_iol.md`)
+- **Estado:** aceptado (2026-11-01)
 - **Requisitos:** R-37, R-38
 
 ## Contexto
@@ -8,6 +8,9 @@ El enunciado exige Databricks Community Edition. Databricks retiró Community Ed
 
 ## Decisión
 Ejecutar en Free Edition respetando el espíritu de la restricción: costo cero, sin Databricks Jobs, sin pipelines declarativos (DLT/Lakeflow), Delta en todas las tablas, orquestación con `dbutils.notebook.run()`.
+
+## Por qué no se espera confirmación de IOL
+No se envió consulta a IOL (decisión del 2026-11-01). Community Edition ya no existe, así que el texto literal de R-37 no se puede cumplir, y Free Edition es su reemplazo gratuito. El desvío se declara en el README.
 
 ## Implicancias técnicas
 - Serverless: sin RDD, sin `sparkContext`, sin cache/persist, sin config de cluster → la lógica se escribe con DataFrame API/SQL.
@@ -28,6 +31,12 @@ Ejecutar en Free Edition respetando el espíritu de la restricción: costo cero,
 | `ai_query` | OK [MEDIDO] con `databricks-meta-llama-3-3-70b-instruct`. Detalle en ADR-011 | 2026-11-01 |
 | Liquid clustering | OK [MEDIDO]: `CREATE TABLE ... CLUSTER BY (d)` y `DESCRIBE DETAIL` devuelve `clusteringColumns=['d']` | 2026-11-01 |
 | `write_delta_merge` idempotente en UC | OK [MEDIDO]: 1ra corrida 8 insertadas; 2da corrida 0 insertadas, 8 ya presentes | 2026-11-01 |
+
+## Qué falta medir en Free Edition
+El smoke test no cubre todo lo que pide el challenge. Estos puntos siguen **no ejecutados**:
+- Que los endpoints de datos de cotizaciones devuelvan series para los símbolos del challenge (spike de ADR-008). El smoke solo pidió la raíz de cada dominio.
+- Que el benchmark 100x entre en los límites de cómputo de Free Edition (ADR-010).
+- `ALTER TABLE ... CLUSTER BY` sobre una tabla existente. El smoke probó `CREATE TABLE ... CLUSTER BY`.
 
 ## Cuándo revisar
 Si IOL indica otro entorno, o si Free Edition cambia sus límites durante el challenge.

@@ -15,7 +15,7 @@ Entregable: repo GitHub público + notebooks con outputs + README con decisiones
 
 ## Entorno (crítico)
 
-- **Databricks Community Edition fue retirado el 1/1/2026.** Se usa **Databricks Free Edition** (ver ADR-001 y `docs/plan/consulta_iol.md`).
+- **Databricks Community Edition fue retirado el 1/1/2026.** Se usa **Databricks Free Edition** (ver ADR-001).
 - Free Edition: **solo serverless**, Unity Catalog, salida a internet restringida a dominios confiables (la verificación con LinkedIn puede habilitarla).
 - En serverless **no usar**: RDD API, `spark.sparkContext`/`sc`, `.cache()`/`.persist()`, configs de cluster, rutas `dbfs:/` root. Usar tablas UC y Volumes.
 - Sin Databricks Jobs ni DLT/Lakeflow pipelines (restricción del challenge). Orquestación = `dbutils.notebook.run()` desde `notebooks/00_run_pipeline.py`.
