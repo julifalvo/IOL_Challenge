@@ -36,7 +36,6 @@ runtime = {
     "spark_version": spark.version,
     "python_version": platform.python_version(),
     "catalog": CATALOG,
-    "current_user": spark.sql("SELECT current_user() AS u").first()["u"],
 }
 for key, value in runtime.items():
     print(f"{key:28} {value}")
