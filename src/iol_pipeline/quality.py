@@ -95,8 +95,11 @@ def row_rules() -> dict[str, Column]:
         AMOUNT: F.abs(F.col("robust_z")) > params["robust_z_threshold"],
         SCALE: (F.col("price_ratio") < params["scale_ratio_low"]) | (F.col("price_ratio") > params["scale_ratio_high"]),
         QUANTITY: F.col("qty").cast("double") > F.col("qty_limit"),
+        "DQ030_INSTRUMENT_UNMAPPED": F.col("_mapping_available") & F.col("symbol").isNotNull() & F.col("_mapped_symbol").isNull(),
         "DQ031_SYMBOL_MULTI_DESC": F.col("_symbol_descriptions") > 1,
         "DQ032_AFTER_MATURITY": F.col("effective_trade_date") > F.col("maturity_date"),
+        "DQ033_CURRENCY_VARIANT_MISMATCH": ((F.col("_mapped_variant").startswith("USD") & (F.col("currency_code") != "USD"))
+                                            | ((F.col("_mapped_variant") == "ARS") & (F.col("currency_code") != "ARS"))),
     }
 
 
@@ -136,7 +139,9 @@ EVENT_DETAILS = {
     AMOUNT: ["gross_amount", "currency_code", "asset_type_rule", "robust_z"],
     SCALE: ["price", "symbol", "symbol_median", "price_ratio"],
     QUANTITY: ["qty", "asset_type_rule", "qty_limit"],
+    "DQ030_INSTRUMENT_UNMAPPED": ["symbol"],
     "DQ032_AFTER_MATURITY": ["effective_trade_date", "maturity_date"],
+    "DQ033_CURRENCY_VARIANT_MISMATCH": ["symbol", "currency_code"],
 }
 
 

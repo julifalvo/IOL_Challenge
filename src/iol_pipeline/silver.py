@@ -31,8 +31,11 @@ def _exact_decimal(text: F.Column, decimal_type: str) -> F.Column:
     return F.when(parsed == converted, converted)
 
 
-def type_trades(bronze: DataFrame) -> DataFrame:
-    """Tipado seguro y normalización. Lo que no parsea queda en null y lo marca una regla, nunca lanza excepción."""
+def type_trades(bronze: DataFrame, mapping: DataFrame | None = None) -> DataFrame:
+    """Tipado seguro y normalización. Lo que no parsea queda en null y lo marca una regla, nunca lanza excepción.
+
+    `mapping` es `iol_ops.instrument_mapping`, si existe: sin él, DQ030 y DQ033 no aplican.
+    """
     side_of = F.create_map(*[F.lit(v) for pair in config.SIDES.items() for v in pair])
     qty = _exact_decimal(F.trim("cantidad"), config.QTY_TYPE)
     price = _exact_decimal(F.trim("precio"), config.PRICE_TYPE)
@@ -47,14 +50,19 @@ def type_trades(bronze: DataFrame) -> DataFrame:
              .withColumn("qty", qty)
              .withColumn("price", price)
              .withColumn("gross_amount", F.try_multiply(qty, price.try_cast(config.AMOUNT_PRICE_TYPE)).try_cast(config.AMOUNT_TYPE))
-             .withColumn("asset_type_rule", instruments.asset_type_by_rules(F.col("symbol"), F.col("description_raw")))
              .withColumn("maturity_date", instruments.maturity_date(F.col("description_raw"))))
 
     versions = (typed.where(F.col("trade_id").isNotNull()).groupBy("trade_id")
                 .agg(F.countDistinct("record_hash").alias("_id_versions")))
-    descriptions = typed.groupBy("symbol").agg(F.countDistinct("description_raw").alias("_symbol_descriptions"))
-    return (typed.join(versions, "trade_id", "left").join(descriptions, "symbol", "left")
-            .fillna(1, ["_id_versions"]))
+    classified = instruments.classify_by_rules(instruments.symbol_catalog(typed)).select(
+        "symbol", F.col("description_count").alias("_symbol_descriptions"), F.col("asset_type").alias("_classified_type"))
+    result = (typed.join(versions, "trade_id", "left").join(classified, "symbol", "left")
+              .fillna(1, ["_id_versions"])
+              .withColumn("asset_type_rule", F.coalesce("_classified_type", F.lit(instruments.NEEDS_REVIEW))).drop("_classified_type"))
+    if mapping is None:
+        return result.withColumn("_mapping_available", F.lit(False)).withColumn("_mapped_symbol", F.lit(None).cast("string")).withColumn("_mapped_variant", F.lit(None).cast("string"))
+    mapped = mapping.select("symbol", F.col("symbol").alias("_mapped_symbol"), F.col("settlement_variant").alias("_mapped_variant"))
+    return result.withColumn("_mapping_available", F.lit(True)).join(mapped, "symbol", "left")
 
 
 def build_silver(typed: DataFrame, baselines: DataFrame, silver_run_id: str, processed_at: datetime) -> DataFrame:
@@ -66,15 +74,17 @@ def build_silver(typed: DataFrame, baselines: DataFrame, silver_run_id: str, pro
             .select(*SILVER_COLUMNS))
 
 
-def run_silver(spark: SparkSession, bronze_table: str, silver_table: str, baselines_table: str, events_table: str, pipeline_run_id: str = "") -> dict:
+def run_silver(spark: SparkSession, bronze_table: str, silver_table: str, baselines_table: str, events_table: str, pipeline_run_id: str = "",
+               mapping_table: str | None = None) -> dict:
     """Reaplica las reglas sobre Bronze completo. Con el mismo input deja las tres tablas idénticas.
 
     Actualiza una fila si cambia cualquier columna derivada: una versión nueva de una operación tiene que marcar
     `DQ004` también en la fila que ya estaba. Falla si no hay estadísticas: sin ellas, DQ020, DQ021 y DQ022 no
-    marcarían nada, sin aviso.
+    marcarían nada, sin aviso. Si `mapping_table` existe, aplica DQ030 y DQ033: por eso el notebook 04 reaplica Silver.
     """
     bronze = spark.table(bronze_table)
-    typed = type_trades(bronze)
+    mapping = spark.table(mapping_table) if mapping_table and spark.catalog.tableExists(mapping_table) else None
+    typed = type_trades(bronze, mapping)
     baselines_result = io.write_delta_upsert(spark, quality.compute_baselines(typed), baselines_table,
                                              ["rules_version", "rule_code", "group_key"], ["median_value", "mad_value", "limit_value", "n"])
     baselines = spark.table(baselines_table).where(F.col("rules_version") == config.RULES_VERSION)

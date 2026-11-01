@@ -8,10 +8,10 @@ from datetime import date
 
 import pytest
 
-from iol_pipeline import bronze, config, quality, silver
+from iol_pipeline import bronze, config, instruments, quality, silver
 
 pytestmark = pytest.mark.integration
-TABLES = ("trades_raw", "ingestion_runs", "trades", "quality_baselines", "quality_events")
+TABLES = ("trades_raw", "ingestion_runs", "trades", "quality_baselines", "quality_events", "instrument_mapping")
 
 
 def _tables(schema):
@@ -23,7 +23,7 @@ def _load(spark, t, csv_path):
 
 
 def _run(spark, t, run_id="p1"):
-    return silver.run_silver(spark, t["trades_raw"], t["trades"], t["quality_baselines"], t["quality_events"], run_id)
+    return silver.run_silver(spark, t["trades_raw"], t["trades"], t["quality_baselines"], t["quality_events"], run_id, t["instrument_mapping"])
 
 
 def _snapshot(spark, table):
@@ -193,6 +193,28 @@ def test_new_file_deactivates_events_of_flags_that_are_gone(spark, schema, tmp_p
     assert events.count() >= total_before  # no se borra ninguno
     check = silver.reconciliation(spark.table(t["trades_raw"]), spark.table(t["trades"]), events)
     assert check["active_events_without_flag"] == check["severe_flags_without_event"] == 0
+
+
+def test_mapping_then_silver_is_stable_and_detects_a_missing_symbol(spark, schema, trades_small_csv):
+    t = _tables(schema)
+    _load(spark, t, trades_small_csv)
+    _run(spark, t, "p1")  # primera vez: todavía no hay mapeo
+
+    first = instruments.run_instruments(spark, t["trades"], t["instrument_mapping"])
+    assert first["rows_inserted"] == first["symbols"] == spark.table(t["trades"]).select("symbol").distinct().where("symbol IS NOT NULL").count()
+    assert instruments.run_instruments(spark, t["trades"], t["instrument_mapping"])["rows_updated"] == 0
+
+    reapplied = _run(spark, t, "p2")
+    stable = _run(spark, t, "p3")
+    assert stable["silver_inserted"] == stable["silver_updated"] == stable["events_inserted"] == stable["events_updated"] == 0
+    flags = {flag for r in spark.table(t["trades"]).collect() for flag in r.quality_flags}
+    assert "DQ030_INSTRUMENT_UNMAPPED" not in flags
+    assert reapplied["silver_rows"] == 39
+
+    spark.sql(f"DELETE FROM {t['instrument_mapping']} WHERE symbol = 'AAPL'")
+    _run(spark, t, "p4")
+    aapl = spark.table(t["trades"]).where("symbol = 'AAPL'").collect()
+    assert aapl and all("DQ030_INSTRUMENT_UNMAPPED" in r.quality_flags for r in aapl)
 
 
 def test_rows_without_id_go_through_and_rerun_changes_nothing(spark, schema, tmp_path, trades_small_csv):

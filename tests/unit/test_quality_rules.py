@@ -53,6 +53,7 @@ SCENARIOS = {
     "many_desc_b": {"simbolo_titulo": "AZN", "descripcion_titulo": "Cedear Astra"},
     "conflict_a": {"id_transaccion": "CONFLICT", "precio": "100"}, "conflict_b": {"id_transaccion": "CONFLICT", "precio": "101"},
     "no_id_a": {"id_transaccion": "", "precio": "100"}, "no_id_b": {"id_transaccion": "", "precio": "101"},
+    "no_symbol": {"simbolo_titulo": ""},
 }
 
 
@@ -253,14 +254,38 @@ def test_amount_keeps_the_eight_decimals_of_the_price(results):
 
 
 def test_maturity_date_from_description(spark):
-    cases = {"BONCAP T30J6 VTO 30/06/2026": date(2026, 6, 30), "BONO V.30/04/27": date(2027, 4, 30), "BONO 31/02/27": None, "YPF": None}
+    cases = {"BONCAP T30J6 VTO 30/06/2026": date(2026, 6, 30), "BONO V.30/04/27": date(2027, 4, 30), "BONO 31/02/27": None, "YPF": None,
+             "CLASE XVIII Vto. 30/9/2033": date(2033, 9, 30), "Lt Neuquen D1739/23 Serie 1": None}
     df = spark.createDataFrame([(d,) for d in cases], "d string").withColumn("m", instruments.maturity_date(F.col("d")))
     assert {r.d: r.m for r in df.collect()} == cases
 
 
-def test_every_rule_has_a_severity_and_deferred_rules_are_not_here(spark):
+def test_every_rule_has_a_severity(spark):
     assert set(quality.row_rules()) == set(config.RULE_SEVERITY)
-    assert {"DQ030_INSTRUMENT_UNMAPPED", "DQ033_CURRENCY_VARIANT_MISMATCH"}.isdisjoint(config.RULE_SEVERITY)  # etapa 04
+
+
+def test_row_without_symbol_is_kept_and_needs_review(results):
+    assert results["no_symbol"].asset_type_rule == "NEEDS_REVIEW"
+    assert "DQ002_REQUIRED_NULL" in results["no_symbol"].quality_flags
+
+
+def test_without_mapping_dq030_and_dq033_do_not_apply(results):
+    flags = {flag for row in results.values() for flag in row.quality_flags}
+    assert "DQ030_INSTRUMENT_UNMAPPED" not in flags and "DQ033_CURRENCY_VARIANT_MISMATCH" not in flags
+
+
+def test_dq030_and_dq033_with_a_mapping(spark):
+    br = _bronze(spark, {"mapped_ok": {}, "not_mapped": {"simbolo_titulo": "NUEVO"}, "wrong_currency": {"simbolo_titulo": "AL30D", "moneda": "ARS"},
+                         "wrong_currency_b": {"simbolo_titulo": "YPFD", "moneda": "USD"}})
+    mapping = spark.createDataFrame([("AAPL", "ARS"), ("AL30D", "USD_MEP"), ("YPFD", "ARS")], "symbol string, settlement_variant string")
+    no_stats = spark.createDataFrame([], BASELINES_SCHEMA)
+    rows = {r.trade_id: r for r in silver.build_silver(silver.type_trades(br, mapping), no_stats, "s1", NOW).collect()}
+    assert rows["mapped_ok"].quality_flags == []
+    assert rows["not_mapped"].quality_flags == ["DQ030_INSTRUMENT_UNMAPPED"]
+    assert rows["not_mapped"].quality_status == "WARNING"
+    assert rows["wrong_currency"].quality_flags == ["DQ033_CURRENCY_VARIANT_MISMATCH"]
+    assert rows["wrong_currency"].quality_status == "ERROR"
+    assert rows["wrong_currency_b"].quality_flags == ["DQ033_CURRENCY_VARIANT_MISMATCH"]
 
 
 # --- Reglas con estadísticas ------------------------------------------------------
