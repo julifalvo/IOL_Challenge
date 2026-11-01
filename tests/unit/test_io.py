@@ -127,6 +127,19 @@ def test_upsert_compares_arrays_and_nulls(spark, schema):
     assert io.write_delta_upsert(spark, spark.createDataFrame([("a", ["x", "y"], None)], kind), target, ["k"], ["flags", "note"])["rows_updated"] == 1
 
 
+def test_upsert_deactivates_rows_missing_from_the_source_without_deleting(spark, schema):
+    target = f"{schema}.up_active"
+    kind = "k string, is_active boolean"
+    write = lambda rows: io.write_delta_upsert(spark, spark.createDataFrame(rows, kind), target, ["k"], ["is_active"], deactivate_column="is_active")  # noqa: E731
+    write([("a", True), ("b", True)])
+
+    assert write([("a", True)]) == {"rows_inserted": 0, "rows_updated": 1}
+    assert sorted((r.k, r.is_active) for r in spark.table(target).collect()) == [("a", True), ("b", False)]
+    assert write([("a", True)]) == {"rows_inserted": 0, "rows_updated": 0}  # idempotente
+    assert write([("a", True), ("b", True)])["rows_updated"] == 1  # vuelve a aparecer
+    assert all(r.is_active for r in spark.table(target).collect())
+
+
 def test_upsert_rejects_columns_the_target_does_not_have(spark, schema):
     target = f"{schema}.up_extra"
     io.write_delta_upsert(spark, spark.createDataFrame([("a", "x", "r")], UPSERT), target, ["k"], ["flag"])

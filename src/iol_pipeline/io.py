@@ -91,11 +91,13 @@ def write_delta_merge(spark: SparkSession, df: DataFrame, target: str, keys: lis
             "rows_already_present": rows_source - rows_inserted}
 
 
-def write_delta_upsert(spark: SparkSession, df: DataFrame, target: str, keys: list[str], compare: list[str]) -> dict[str, int]:
+def write_delta_upsert(spark: SparkSession, df: DataFrame, target: str, keys: list[str], compare: list[str],
+                       deactivate_column: str | None = None) -> dict[str, int]:
     """Inserta lo nuevo y actualiza una fila solo si cambia alguna columna de `compare`.
 
     Reejecutar con el mismo input no toca nada, ni siquiera las columnas de `df` que no están en `compare`,
-    como la corrida o la fecha de proceso. Las claves se comparan con `<=>`. No borra.
+    como la corrida o la fecha de proceso. Las claves se comparan con `<=>`. No borra: con `deactivate_column`,
+    las filas de `target` que no están en `df` pasan esa columna a false.
     """
     if not keys or not compare:
         raise ValueError("write_delta_upsert necesita claves y columnas a comparar")
@@ -105,8 +107,10 @@ def write_delta_upsert(spark: SparkSession, df: DataFrame, target: str, keys: li
     try:
         on = " AND ".join(f"t.`{k}` <=> s.`{k}`" for k in keys)
         same = " AND ".join(f"t.`{c}` <=> s.`{c}`" for c in compare)
+        deactivate = (f" WHEN NOT MATCHED BY SOURCE AND t.`{deactivate_column}` THEN UPDATE SET t.`{deactivate_column}` = false"
+                      if deactivate_column else "")
         result = spark.sql(f"MERGE INTO {target} t USING {view} s ON {on} "
-                           f"WHEN MATCHED AND NOT ({same}) THEN UPDATE SET * WHEN NOT MATCHED THEN INSERT *").first()
+                           f"WHEN MATCHED AND NOT ({same}) THEN UPDATE SET * WHEN NOT MATCHED THEN INSERT *{deactivate}").first()
     finally:
         spark.catalog.dropTempView(view)
     return {"rows_inserted": int(result["num_inserted_rows"]), "rows_updated": int(result["num_updated_rows"])}
