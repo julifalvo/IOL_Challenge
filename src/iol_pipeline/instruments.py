@@ -1,7 +1,7 @@
 """Clasificación de instrumentos, variantes de liquidación y mapeo a proveedor (ADR-004, ADR-005, ADR-008).
 
-Tres capas, de más a menos confiable en cuanto a quién decide: reglas determinísticas, IA para lo que quede
-en NEEDS_REVIEW (spec 09), y overrides manuales que ganan sobre todo. Hay una fila por símbolo.
+Capas, de menos a más autoridad: reglas determinísticas, IA para lo que quede en NEEDS_REVIEW (spec 09), la validación
+de cotizaciones para proveedor y escala (spec 05), y overrides manuales que ganan sobre todo. Hay una fila por símbolo.
 """
 from __future__ import annotations
 
@@ -162,6 +162,26 @@ def with_provider(classified: DataFrame) -> DataFrame:
                         .otherwise("UNSUPPORTED")))
 
 
+def apply_quote_series(mapping: DataFrame, series: DataFrame | None) -> DataFrame:
+    """Pisa el mapeo inicial con lo que la etapa 05 midió (ADR-008): la serie elegida, o `UNSUPPORTED` si se evaluó y ninguna sirve.
+
+    Lo que todavía no se evaluó queda como estaba. Sin esto, reejecutar la etapa 04 borraría la validación.
+    """
+    if series is None:
+        return mapping
+    active = series.where("is_active")
+    evaluated = active.select("symbol").distinct().withColumn("_evaluated", F.lit(True))
+    chosen = active.where("is_selected").select("symbol", F.col("provider").alias("_provider"), F.col("provider_symbol").alias("_provider_symbol"), F.col("price_scale_factor").alias("_factor"))
+    joined = mapping.join(evaluated, "symbol", "left").join(chosen, "symbol", "left")
+    is_evaluated = F.col("_evaluated").isNotNull()
+    return (joined
+            .withColumn("provider", F.when(is_evaluated, F.col("_provider")).otherwise(F.col("provider")))
+            .withColumn("provider_symbol", F.when(is_evaluated, F.col("_provider_symbol")).otherwise(F.col("provider_symbol")))
+            .withColumn("price_scale_factor", F.coalesce(F.col("_factor"), F.col("price_scale_factor")))
+            .withColumn("mapping_status", F.when(F.col("_provider").isNotNull(), "MAPPED").when(is_evaluated, "UNSUPPORTED").otherwise(F.col("mapping_status")))
+            .drop("_evaluated", "_provider", "_provider_symbol", "_factor"))
+
+
 def _validate_override(field: str, symbol: str, value: str) -> None:
     allowed = {"asset_type": config.ASSET_TYPES, "settlement_variant": config.SETTLEMENT_VARIANTS, "mapping_status": config.MAPPING_STATUSES}.get(field)
     if not value.strip():
@@ -230,31 +250,33 @@ def _check_override_symbols(catalog: DataFrame, overrides: dict[str, dict[str, s
             raise ValueError(f"Overrides de símbolos que no existen: {sorted(wanted - found)}")
 
 
-def build_mapping(trades: DataFrame, overrides: dict[str, dict[str, str]], updated_at: datetime, enrichment: DataFrame | None = None) -> DataFrame:
+def build_mapping(trades: DataFrame, overrides: dict[str, dict[str, str]], updated_at: datetime, enrichment: DataFrame | None = None,
+                  quote_series: DataFrame | None = None) -> DataFrame:
     """Una fila por símbolo, lista para `iol_ops.instrument_mapping`.
 
-    Orden: reglas, IA, override de tipo, proveedor, demás overrides. El proveedor sale del tipo final: un tipo
-    corregido a mano o por IA también tiene que recibir cotizaciones.
+    Orden: reglas, IA, override de tipo, proveedor, validación de cotizaciones, demás overrides. El proveedor sale del
+    tipo final: un tipo corregido a mano o por IA también tiene que recibir cotizaciones.
     """
     catalog = symbol_catalog(trades)
     _check_override_symbols(catalog, overrides)
     type_overrides = {field: values for field, values in overrides.items() if field == "asset_type"}
     other_overrides = {field: values for field, values in overrides.items() if field != "asset_type"}
     typed = apply_overrides(apply_enrichment(classify_by_rules(catalog), enrichment), type_overrides)
-    return (apply_overrides(with_provider(typed), other_overrides)
+    return (apply_overrides(apply_quote_series(with_provider(typed), quote_series), other_overrides)
             .withColumn("mapping_version", F.lit(config.MAPPING_VERSION))
             .withColumn("updated_at", F.lit(updated_at))
             .select(*MAPPING_COLUMNS))
 
 
 def run_instruments(spark: SparkSession, silver_table: str, mapping_table: str, overrides_path: Path = OVERRIDES_PATH,
-                    enrichment_table: str | None = None) -> dict[str, int]:
+                    enrichment_table: str | None = None, quote_series_table: str | None = None) -> dict[str, int]:
     """Reconstruye el mapeo desde Silver. Con el mismo input no toca nada, ni siquiera `updated_at`.
 
-    `enrichment_table` es la salida validada de la IA (spec 09), si existe: sin ella, cada corrida desharía su aporte.
+    `enrichment_table` (spec 09) y `quote_series_table` (spec 05) son salidas de etapas posteriores, si existen: sin ellas, cada corrida desharía su aporte.
     """
     enrichment = spark.table(enrichment_table).where("is_active") if enrichment_table and spark.catalog.tableExists(enrichment_table) else None
-    mapping = build_mapping(spark.table(silver_table), read_overrides(overrides_path), datetime.now(timezone.utc), enrichment)
+    series = spark.table(quote_series_table) if quote_series_table and spark.catalog.tableExists(quote_series_table) else None
+    mapping = build_mapping(spark.table(silver_table), read_overrides(overrides_path), datetime.now(timezone.utc), enrichment, series)
     compare = [c for c in MAPPING_COLUMNS if c not in ("symbol", "updated_at")]
     result = io.write_delta_upsert(spark, mapping, mapping_table, ["symbol"], compare)
     return {**result, "symbols": spark.table(mapping_table).count()}

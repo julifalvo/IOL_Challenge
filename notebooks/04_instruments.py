@@ -31,6 +31,7 @@ bronze_table = io.table_name("bronze", "trades_raw", catalog=CATALOG)
 silver_table = io.table_name("silver", "trades", catalog=CATALOG)
 mapping_table = io.table_name("ops", "instrument_mapping", catalog=CATALOG)
 enrichment_table = io.table_name("ops", "instrument_enrichment", catalog=CATALOG)  # la escribe el notebook 09
+quote_series_table = io.table_name("ops", "quote_series", catalog=CATALOG)  # la escribe el notebook 05
 baselines_table = io.table_name("ops", "quality_baselines", catalog=CATALOG)
 events_table = io.table_name("ops", "quality_events", catalog=CATALOG)
 
@@ -42,11 +43,11 @@ events_table = io.table_name("ops", "quality_events", catalog=CATALOG)
 
 # COMMAND ----------
 
-first = instruments.run_instruments(spark, silver_table, mapping_table, enrichment_table=enrichment_table)
+first = instruments.run_instruments(spark, silver_table, mapping_table, enrichment_table=enrichment_table, quote_series_table=quote_series_table)
 print("1ra corrida:", first)
 second = None
 if dbutils.widgets.get("demo_rerun") == "true":
-    second = instruments.run_instruments(spark, silver_table, mapping_table, enrichment_table=enrichment_table)
+    second = instruments.run_instruments(spark, silver_table, mapping_table, enrichment_table=enrichment_table, quote_series_table=quote_series_table)
     print("2da corrida:", second)
 reapplied = silver.run_silver(spark, bronze_table, silver_table, baselines_table, events_table, RUN_ID, mapping_table)
 print("Silver reaplicado:", reapplied)

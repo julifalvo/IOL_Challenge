@@ -29,6 +29,7 @@ silver_table = io.table_name("silver", "trades", catalog=CATALOG)
 mapping_table = io.table_name("ops", "instrument_mapping", catalog=CATALOG)
 runs_table = io.table_name("ops", "ai_runs", catalog=CATALOG)
 enrichment_table = io.table_name("ops", "instrument_enrichment", catalog=CATALOG)
+quote_series_table = io.table_name("ops", "quote_series", catalog=CATALOG)  # la escribe el notebook 05
 
 # COMMAND ----------
 
@@ -54,7 +55,7 @@ first = ai.run_enrichment(spark, mapping_table, runs_table, enrichment_table, ai
 print("1ra corrida:", first)
 second = ai.run_enrichment(spark, mapping_table, runs_table, enrichment_table, ai.ai_query_caller(spark, config.AI_MODEL), RUN_ID)
 print("2da corrida (tiene que consultar solo lo que falló):", second)
-print("Mapeo:", instruments.run_instruments(spark, silver_table, mapping_table, enrichment_table=enrichment_table))
+print("Mapeo:", instruments.run_instruments(spark, silver_table, mapping_table, enrichment_table=enrichment_table, quote_series_table=quote_series_table))
 
 # COMMAND ----------
 
