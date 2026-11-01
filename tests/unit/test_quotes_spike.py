@@ -34,6 +34,19 @@ def test_yahoo_skips_empty_closes_and_missing_result():
     assert spike.parse_yahoo({"chart": {"result": None}}, START, END) == []
 
 
+def test_same_day_ratio_ignores_days_outside_the_other_series():
+    rows = [{"date": date(2026, 1, 5), "close": 100.0}, {"date": date(2026, 1, 6), "close": 200.0}, {"date": date(2026, 1, 7), "close": 50.0}]
+    # Sube el doble en el período: comparar medianas de ventanas distintas daría una relación falsa.
+    trade = {date(2026, 1, 5): 100.0, date(2026, 1, 6): 200.0, date(2026, 1, 20): 999.0}
+    result = spike.same_day_ratio(rows, trade)
+    assert result["ratio_p50"] == 1.0
+    assert result["ratio_days"] == 2
+
+
+def test_same_day_ratio_without_enough_days_is_empty():
+    assert spike.same_day_ratio([{"date": date(2026, 1, 5), "close": 100.0}], {date(2026, 1, 5): 100.0})["ratio_p50"] is None
+
+
 def test_a_provider_error_does_not_stop_the_rest(monkeypatch):
     monkeypatch.setattr(spike, "PAUSE_S", 0)
 
