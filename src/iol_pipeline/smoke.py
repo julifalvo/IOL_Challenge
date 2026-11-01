@@ -9,6 +9,8 @@ from collections.abc import Callable, Collection
 from datetime import datetime, timezone
 from typing import Any
 
+from iol_pipeline import config
+
 
 def check_egress(urls: dict[str, str], get: Callable[..., Any], timeout_s: float,
                  inconclusive_http: Collection[int]) -> list[dict[str, str]]:
@@ -23,7 +25,7 @@ def check_egress(urls: dict[str, str], get: Callable[..., Any], timeout_s: float
             status = "INCONCLUSO" if response.status_code in inconclusive_http else "OK"
             detail = f"HTTP {response.status_code}, Server={response.headers.get('Server', '<sin header>')}"
         except Exception as exc:  # el smoke test registra, no corta
-            status, detail = "FAIL", f"{type(exc).__name__}: {str(exc)[:200]}"
+            status, detail = "FAIL", f"{type(exc).__name__}: {str(exc)[:config.SMOKE_ERROR_MAX_CHARS]}"
         results.append({"check": f"egress:{name}", "status": status, "detail": f"{url} -> {detail}",
                         "checked_at": checked_at})
     return results

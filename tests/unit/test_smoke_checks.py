@@ -40,6 +40,15 @@ def test_connection_error_is_recorded_not_raised():
     assert "ConnectionError" in results[0]["detail"]
 
 
+def test_long_error_message_is_truncated():
+    def blocked(url, timeout):
+        raise ConnectionError("x" * (config.SMOKE_ERROR_MAX_CHARS + 50))
+
+    detail = _check(blocked)[0]["detail"]
+    assert "x" * config.SMOKE_ERROR_MAX_CHARS in detail
+    assert "x" * (config.SMOKE_ERROR_MAX_CHARS + 1) not in detail
+
+
 def test_timeout_is_passed_to_get():
     seen = {}
 

@@ -27,9 +27,9 @@ results = []
 
 
 def record(check: str, status: str, detail: str) -> None:
-    results.append({"check": check, "status": status, "detail": detail[:500],
+    results.append({"check": check, "status": status, "detail": detail[:config.SMOKE_DETAIL_MAX_CHARS],
                     "checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds")})
-    print(f"[{status}] {check}: {detail[:300]}")
+    print(f"[{status}] {check}: {detail[:config.SMOKE_PRINT_MAX_CHARS]}")
 
 
 io.ensure_schemas(spark, catalog=CATALOG)

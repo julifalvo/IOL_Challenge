@@ -97,6 +97,9 @@ SMOKE_EGRESS_URLS = {
 SMOKE_EGRESS_INCONCLUSIVE_HTTP = frozenset({403, 407, 429})  # también los puede devolver un intermediario (ADR-008)
 SMOKE_AI_MODEL = "databricks-meta-llama-3-3-70b-instruct"  # [MEDIDO] disponible en Free Edition (smoke 2026-11-01, ADR-011)
 SMOKE_CHILD_TIMEOUT_S = 60
+SMOKE_DETAIL_MAX_CHARS = 500  # lo que se guarda en smoke_test_results
+SMOKE_PRINT_MAX_CHARS = 300   # lo que se imprime en el output del notebook
+SMOKE_ERROR_MAX_CHARS = 200   # mensaje de una excepción de egress
 
 # --- Segmentación SCD2 (ADR-007) -------------------------------------------------
 # Cortes congelados en seg_v1 a partir de p75/p90-p95/p99 de ops por cliente.
