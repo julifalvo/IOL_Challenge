@@ -6,8 +6,8 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 |---|---|---|---|---|
 | 00 Entorno | hecho (local + Databricks) | 99/99 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 10/11 OK, 1 inconcluso (2026-11-01) | Review hecho. Outputs en `notebooks_executed/`. 2 bajas abiertas: fixture (etapa 03) y triple evaluación del MERGE (benchmark) |
 | 01 Profiling + arquitectura | parcial | 99/99 passed (2026-11-01) | `01_data_profiling` y `00_quotes_spike` OK (2026-11-01) | Review hecho. **Pendiente, por dependencia:** benchmark, §6 de `ARCHITECTURE.md` y ADR-010 necesitan Silver y Gold (día 5 de `PLAN.md`). 8 bajas abiertas (ver log) |
-| 02 Bronze | hecho (local + Databricks) | 132/132 passed en la última suite completa; 33/33 de Bronze después de las últimas correcciones (2026-11-01) | `02_ingest_bronze` OK (2026-11-01) | Review hecho. Outputs en `notebooks_executed/02_ingest_bronze.ipynb`. 1 baja abierta: caso `DQ008` en el fixture (etapa 03) |
-| 03 Silver + calidad | pendiente | — | — | |
+| 02 Bronze | hecho (local + Databricks) | 132/132 passed en la última suite completa; 33/33 de Bronze después de las últimas correcciones (2026-11-01) | `02_ingest_bronze` OK (2026-11-01) | Review hecho. Outputs en `notebooks_executed/02_ingest_bronze.ipynb` |
+| 03 Silver + calidad | código listo | 197/197 passed (2026-11-01) | **no ejecutado** | Corrida local sobre el CSV completo OK. Falta `/review-stage 03` y correr `03_quality_silver` en Free Edition. `DQ030` y `DQ033` pasan a la etapa 04 |
 | 04 Instrumentos | pendiente | — | — | |
 | 05 Cotizaciones | pendiente | — | — | |
 | 06 Gold + SCD2 | pendiente | — | — | |
@@ -178,3 +178,23 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - `createDataFrame` con 100.000 filas por Spark Connect y `open()` sobre el Volume funcionan en serverless.
   - El hash del archivo coincide con el local (`dd9e9b96…`): es el mismo CSV, byte a byte.
   - Criterios de aceptación: los 4 ✅. — ADR-002
+- 2026-11-01 — **Etapa 03 implementada (local).**
+  - Código: `instruments.py`, `quality.py`, `silver.py`, `io.write_delta_upsert`, `notebooks/03_quality_silver.py`, y 65 tests. Las reglas por fila se prueban juntas en un DataFrame: por test tardaban ~10 s.
+  - Corrida con Spark 4.0.5 local sobre el CSV completo:
+    - 100.000 filas en Silver, reconciliación con 0 diferencias, y 0 CRITICAL.
+    - `quality_status`: 89.290 OK, 10.702 WARNING, 8 ERROR.
+    - Reglas: DQ010 10.255, DQ013 70.409 (INFO), DQ020 437, DQ021 13 (8 ERROR en IOLnet, 5 WARNING en opciones), DQ022 105, DQ031 63 (INFO). Las demás, 0.
+    - 10.810 eventos y 1.467 filas de `quality_baselines`.
+    - La segunda corrida da 0 insertadas, 0 actualizadas y 0 eventos nuevos.
+  - Cambios respecto del spec: — spec 03, spec 04
+    - El MERGE actualiza si cambian los flags, no solo `rules_version`: si no, una versión nueva de una operación no marcaría `DQ004` en la fila que ya estaba.
+    - `DQ030` y `DQ033` pasan a la etapa 04, porque necesitan `instrument_mapping`. Falta definir cómo llegan esas marcas a `quality_flags`, ya que Silver corre antes.
+    - El ejemplo por regla es un prefijo de `record_hash`, no `trade_id`.
+  - Baja de las etapas 00 y 02 cerrada: los casos que faltaban del fixture (`DQ005`, `DQ008`, `DQ031`, dominio inválido) se prueban con filas armadas en `test_quality_rules.py`.
+  - Limitación: `asset_type_rule` deja 19.241 operaciones en `NEEDS_REVIEW`, sobre todo acciones locales, porque las reglas no las reconocen. Los grupos de `DQ020` y `DQ022` las juntan hasta tener la clasificación final de la etapa 04.
+  - Criterios de aceptación:
+    - ⏳ 100.000 filas en Silver, 0 CRITICAL: medido en local, **no ejecutado** en Free Edition.
+    - ✅ Cada regla del catálogo implementada con test, salvo `DQ030` y `DQ033` (etapa 04).
+    - ✅ Columna "Observado" de `quality_rules.md` completada, con números de la corrida local. Falta confirmarlos en Free Edition.
+    - ⏳ Reejecución sin cambios en conteos ni hashes: medido en local, **no ejecutado** en Free Edition.
+  - La suite completa tarda 13 min 12 s. No se probó si bajan con otra configuración de Spark en los tests.
