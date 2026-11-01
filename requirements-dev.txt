@@ -1,5 +1,5 @@
 # Desarrollo y tests locales (requiere Java 17+).
-# pyspark/delta-spark 4.0 para acercarse al runtime serverless (Spark 4).
+# pyspark/delta-spark 4.0: Free Edition corre Spark 4.2.0 [MEDIDO], los tests no cubren lo específico de 4.2 (ADR-001).
 # Si hay problemas de compatibilidad: pyspark==3.5.* + delta-spark==3.2.*
 -r requirements.txt
 pyspark>=4.0,<4.1

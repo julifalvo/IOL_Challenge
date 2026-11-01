@@ -18,6 +18,16 @@ No se envió consulta a IOL (decisión del 2026-11-01). Community Edition ya no 
 - Egress restringido → ADR-008 (fetcher externo como plan B).
 - La comparativa de cómputo (ADR-010) se mide en serverless y se extrapola a configuraciones productivas.
 
+## Runtime: Databricks y local no son iguales
+| | Spark | Python | Origen |
+|---|---|---|---|
+| Free Edition serverless (`client.6.5`) | 4.2.0 | 3.12.3 | [MEDIDO] `notebooks_executed/00_setup.ipynb`, 2026-11-01 |
+| Tests locales | pyspark 4.0.5 + delta-spark 4.0.1 | 3.11.9 | [MEDIDO] `PROGRESS.md`, 2026-10-31 |
+
+- Los tests locales validan la lógica, no el comportamiento específico de Spark 4.2. Lo que dependa del motor se confirma corriendo el notebook en Free Edition.
+- `write_delta_merge` se probó en ambos: tests locales y smoke test.
+- PyPI ya ofrece pyspark 4.2.x y delta-spark 4.2.0 (`pip index versions`, 2026-11-01). Alinear el entorno local **no se probó**, ni si esas dos versiones son compatibles entre sí.
+
 ## Resultado del smoke test
 - **Cómo se obtiene:** corriendo `notebooks/00_setup.py` y `notebooks/00_smoke_test.py`. El detalle queda en `iol_ops.smoke_test_results`, filtrado por `smoke_run_id`.
 - **Estado:** ejecutado el 2026-11-01. `00_setup` sin errores; `00_smoke_test` con 9/9 chequeos OK, `smoke_run_id = 1cc453e0-7d65-4a74-b2c2-4387cc92ec8d`.

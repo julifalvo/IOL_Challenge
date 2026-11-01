@@ -21,6 +21,7 @@ Entregable: repo GitHub público + notebooks con outputs + README con decisiones
 - Sin Databricks Jobs ni DLT/Lakeflow pipelines (restricción del challenge). Orquestación = `dbutils.notebook.run()` desde `notebooks/00_run_pipeline.py`.
 - **Todas** las tablas persistentes en Delta (managed tables UC).
 - Desarrollo local en VS Code: lógica en `src/iol_pipeline/` como funciones PySpark puras, testeadas con `pytest` + Spark local + delta-spark. Databricks se usa para correr y generar evidencia.
+- **Runtime de Free Edition [MEDIDO, 2026-11-01]:** `client.6.5`, Spark 4.2.0, Python 3.12.3. Local corre pyspark 4.0.5 y Python 3.11: los tests validan la lógica, no el comportamiento específico de Spark 4.2 (ADR-001).
 - **Entorno local: Windows nativo (PowerShell)**, sin WSL. Verificado el 2026-10-31 con `pytest` (4 passed, test de Delta MERGE incluido):
 
   | Componente | Versión / ubicación |
