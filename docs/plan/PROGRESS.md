@@ -241,3 +241,8 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - Validación contra data912: de 930 símbolos en las listas independientes, 923 coinciden, 7 quedan en `NEEDS_REVIEW` y 0 están mal clasificados [MEDIDO].
   - Tests locales: 285 passed, en 26 min 13 s. Silver da los mismos números.
   - Sin probar en serverless: leer `local_stocks.csv`, y bajar las listas de data912.
+- 2026-11-01 — **CLI de Databricks disponible.** Actualiza la entrada "Sin acceso de Claude Code a Databricks".
+  - Claude Code puede hacer el Pull del Git folder y leer el workspace.
+  - No puede ejecutar notebooks sin Databricks Jobs, que el challenge prohíbe (R-37): en serverless, el CLI solo ejecuta con `jobs submit`.
+  - No puede exportar outputs: `workspace export --format JUPYTER` devuelve 0 outputs [MEDIDO]. Correr y exportar se hace desde la interfaz.
+  - Al correr un notebook, Databricks le agrega un encabezado con `environment_version`. Si ese notebook cambió en el repo, el Pull da conflicto, sin que haya un cambio real.
