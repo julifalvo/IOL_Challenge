@@ -16,6 +16,9 @@
 4. `DQ021_POSSIBLE_SCALE_ERROR` (ERROR) cuando el precio de un trade está a ×50 o ×1/50 de la mediana del símbolo: no entra a métricas de importe ni a comparación con mercado; se conserva y se reporta.
 5. Outliers (`DQ020`) se evalúan sobre log(importe) por (asset_type, moneda), no sobre cantidad.
 
+## Límite del sanity check (spike del 2026-11-01, ADR-008)
+El rango [0,5; 2] detecta errores de escala groseros, como `YPFD` a ×10, pero no sesgos menores: BYMA da AL30 ajustado y la relación queda en 1,15, dentro del rango [MEDIDO]. **Pendiente para la etapa 05:** decidir con la cobertura completa si se achica el rango, y dónde. `config.SCALE_SANITY_RANGE` no cambia hasta tener esa evidencia.
+
 ## Por qué no "corregir" multiplicando por 100
 No sabemos si el error está en precio, en cantidad o en ambos (el importe puede ser correcto). Corregir sin confirmación del origen sería inventar datos. Se marca y se escala al dueño del dato (canal IOLnet).
 
