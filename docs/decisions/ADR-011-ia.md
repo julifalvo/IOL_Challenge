@@ -10,6 +10,16 @@
 ## Alcance después de las reglas [MEDIDO, 2026-11-01]
 Las reglas y la lista de acciones de ADR-004 dejan solo 10 símbolos y 371 operaciones en `NEEDS_REVIEW`. El mayor aporte de la IA pasa a ser lo que ninguna regla puede inferir: emisor, sector y ticker del subyacente de 598 CEDEARs, más esos 10 casos.
 
+## Política de uso [etapa 09]
+- Una consulta por subyacente, sin opciones. Las variantes reciben el mismo resultado.
+- Solo se usa una salida `VALID`. `REJECTED` no cumple el schema, `CONFLICT` contradice a una regla y gana la regla, `LOW_CONFIDENCE` no alcanza `config.AI_MIN_CONFIDENCE` [SUPUESTO] y `FAILED` es un lote sin respuesta legible, que se reintenta en otra corrida.
+- Un `CONFLICT` descarta toda la respuesta de ese instrumento, también emisor y sector: si erró el tipo, el resto no es confiable.
+
+## Evaluación
+- A ciegas: el modelo no recibe `rule_asset_type` ni los hermanos. Si los viera, los copiaría y la accuracy saldría inflada.
+- La muestra de 60 símbolos cubre todos los tipos salvo opciones, que no se consultan, e incluye símbolos en `NEEDS_REVIEW`.
+- **Límite de la muestra:** las etiquetas las escribió Claude Code, sin revisión humana independiente. Mide la coincidencia con esas etiquetas. Parte de la muestra también tiene el contraste de las listas de data912, y lo demás se apoya en la descripción del dataset.
+
 ## Por qué el principal es clasificación y no el resumen
 Está **dentro** del pipeline: mejora `dim_instrument`, el mapeo a la fuente de cotización y los cortes del análisis. El resumen es consumo; útil, pero no cambia la calidad del dato.
 
