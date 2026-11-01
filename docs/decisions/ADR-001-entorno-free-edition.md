@@ -21,7 +21,7 @@ Ejecutar en Free Edition respetando el espíritu de la restricción: costo cero,
 
 | Prueba | Resultado | Fecha |
 |---|---|---|
-| Crear schema + volume | Schemas: OK [MEDIDO], `SHOW SCHEMAS` de `00_setup` lista `iol_bronze`, `iol_gold`, `iol_ops`, `iol_silver`. Volume `landing`: sin verificar | 2026-11-01 |
+| Crear schema + volume | Schemas: OK [MEDIDO], `SHOW SCHEMAS` de `00_setup` lista `iol_bronze`, `iol_gold`, `iol_ops`, `iol_silver`. Volume: OK [MEDIDO], `SHOW VOLUMES` lista `iol_bronze.landing`. CSV en `landing/trades/`: todavía no subido (`CSV_MISSING`) | 2026-11-01 |
 | Git folder + import de `src/` | OK [MEDIDO]: la celda que muestra `SHOW SCHEMAS` llama antes a `io.ensure_schemas`, importado desde `src/` | 2026-11-01 |
 | `dbutils.notebook.run` | | |
 | Egress a proveedores | ver ADR-008 | |

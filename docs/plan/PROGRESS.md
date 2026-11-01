@@ -4,7 +4,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 
 | Spec | Estado | Tests locales | Databricks | Pendientes / notas |
 |---|---|---|---|---|
-| 00 Entorno | implementado; Databricks en curso | 32/32 passed (2026-10-31) | `00_setup` parcial: 4 schemas OK (2026-11-01); `00_smoke_test` no ejecutado | ⏳ confirmar Volume `landing` + CSV; correr `00_smoke_test` y volcar resultados en ADR-001/008/011 |
+| 00 Entorno | implementado; Databricks en curso | 32/32 passed (2026-10-31) | `00_setup` parcial: 4 schemas + Volume `landing` OK, CSV no subido (2026-11-01); `00_smoke_test` no ejecutado | ⏳ subir CSV y verificar contrato; correr `00_smoke_test` y volcar resultados en ADR-001/008/011 |
 | 01 Profiling + arquitectura | pendiente | — | — | |
 | 02 Bronze | pendiente | — | — | |
 | 03 Silver + calidad | pendiente | — | — | |
