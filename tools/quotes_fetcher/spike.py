@@ -82,14 +82,14 @@ def fetch_data912(symbol: str, get: Callable[..., Any], start: date, end: date) 
 
 def fetch_byma(symbol: str, get: Callable[..., Any], start: date, end: date) -> tuple[str, list[dict]]:
     response = get("https://open.bymadata.com.ar/vanoms-be-core/rest/api/bymadata/free/chart/historical-series/history",
-                   params={"symbol": f"{symbol} 24HS", "resolution": "D", "from": _epoch(start), "to": _epoch(end + timedelta(days=1))},
+                   params={"symbol": f"{symbol}{config.BYMA_SYMBOL_SUFFIX}", "resolution": "D", "from": _epoch(start), "to": _epoch(end + timedelta(days=1))},
                    timeout=config.HTTP_TIMEOUT_S, headers=HEADERS)
     time.sleep(PAUSE_S)
     return str(response.status_code), parse_byma(response.json(), start, end) if response.status_code == 200 else []
 
 
 def fetch_yahoo(symbol: str, get: Callable[..., Any], start: date, end: date) -> tuple[str, list[dict]]:
-    response = get(f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}.BA",
+    response = get(f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}{config.YAHOO_SYMBOL_SUFFIX}",
                    params={"period1": _epoch(start), "period2": _epoch(end + timedelta(days=1)), "interval": "1d"},
                    timeout=config.HTTP_TIMEOUT_S, headers=HEADERS)
     time.sleep(PAUSE_S)

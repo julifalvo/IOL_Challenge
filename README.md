@@ -76,7 +76,7 @@ Notebooks ya ejecutados (con outputs): [`notebooks_executed/`](notebooks_execute
 | 01 | data_profiling | Evidencia de cada decisión | — |
 | 02 | ingest_bronze | CSV → Bronze idempotente | `trades_raw`, `ingestion_runs` |
 | 03 | quality_silver | Tipado, fecha efectiva, reglas | `silver.trades`, `quality_events` |
-| 04 | instruments | Mapeo, variantes, escala | `instrument_mapping`, `dim_instrument` |
+| 04 | instruments | Mapeo, variantes, escala | `instrument_mapping` |
 | 09 | ai_enrichment | IA sobre instrumentos ambiguos | `ai_runs` |
 | 05 | market_quotes | Cotizaciones, matching, cobertura | `fact_market_quotes`, `fact_trade_market`, `quote_coverage` |
 | 06 | model_gold | Dimensiones, SCD2, hechos | `iol_gold.*` |
