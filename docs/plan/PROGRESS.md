@@ -8,12 +8,12 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 | 01 Profiling + arquitectura | parcial | 99/99 passed (2026-11-01) | `01_data_profiling` y `00_quotes_spike` OK (2026-11-01) | Review hecho. **Pendiente, por dependencia:** benchmark, §6 de `ARCHITECTURE.md` y ADR-010 necesitan Silver y Gold (día 5 de `PLAN.md`). 8 bajas abiertas (ver log) |
 | 02 Bronze | hecho (local + Databricks) | 132/132 passed en la última suite completa; 33/33 de Bronze después de las últimas correcciones (2026-11-01) | `02_ingest_bronze` OK (2026-11-01) | Review hecho. Outputs en `notebooks_executed/02_ingest_bronze.ipynb` |
 | 03 Silver + calidad | hecho (local + Databricks) | 285/285 passed (2026-11-01) | `03_quality_silver` OK con la clasificación de la etapa 04 (2026-11-01) | Review hecho. **Falta exportar con outputs:** el `.ipynb` del repo tiene los números anteriores (DQ020 437, DQ022 105) |
-| 04 Instrumentos | hecho (local + Databricks), salvo `NEEDS_REVIEW` | 285/285 passed (2026-11-01) | `04_instruments` OK (2026-11-01) | Review hecho. **Falta exportar con outputs.** Quedan 10 símbolos en `NEEDS_REVIEW` para la etapa 09 |
+| 04 Instrumentos | hecho (local + Databricks) | 333/333 passed (2026-11-01) | `04_instruments` OK (2026-11-01) | Review hecho. **Falta exportar con outputs.** 0 símbolos en `NEEDS_REVIEW` después de la etapa 09 |
 | 05 Cotizaciones | pendiente | — | — | |
 | 06 Gold + SCD2 | pendiente | — | — | |
 | 07 Monitoreo + performance | pendiente | — | — | |
 | 08 EDA + SQL | pendiente | — | — | |
-| 09 IA | pendiente | — | — | |
+| 09 IA | componente A hecho (local + Databricks); componente B pendiente de la etapa 08 | 333/333 passed (2026-11-01) | `09_ai_enrichment` OK (2026-11-01) | **Falta `/review-stage 09` y exportar con outputs.** Etapa 05 en curso |
 | 10 Orquestación + tests | pendiente | — | — | |
 | 11 Entrega | pendiente | — | — | |
 
@@ -253,3 +253,12 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - `local_stocks.csv` se lee bien desde serverless, y las listas de data912 se bajan sin errores.
   - Criterios de la etapa 03: los 4 ✅. Etapa 04: ✅ ADR-004 y tests; ❌ sin `NEEDS_REVIEW`, se cierra en la etapa 09.
   - **Falta:** exportar con outputs `03_quality_silver.ipynb` y `04_instruments.ipynb` a `notebooks_executed/`, desde la interfaz (spec 11).
+- 2026-11-01 — **Etapa 09, componente A: hecho.** Requisitos R-28 a R-30.
+  - Código: `src/iol_pipeline/ai.py`, `notebooks/09_ai_enrichment.py`, `tests/unit/test_ai_validation.py`, `tests/integration/test_ai_enrichment.py`, muestra en `tests/fixtures/instrument_gold_labels.csv`.
+  - Modelo elegido con la evaluación a ciegas sobre 60 símbolos: Qwen3 Next 80B, `asset_type` 90,0%; GPT OSS 120B 83,3%; Llama 3.3 70B 78,3%. Ticker 95,5% en los tres, contra 90,9% de copiar el símbolo [MEDIDO].
+  - Corrida: 747 instrumentos, 737 `VALID`, 10 `REJECTED`, 0 `CONFLICT`. 1.136 de 1.150 símbolos sin opciones enriquecidos; rerun sin consultas ni cambios [MEDIDO].
+  - Tipo: la IA resolvió 3 de los 10 pendientes. Los otros 7 llevan override, con motivo en `mapping/overrides.csv`. Quedó `NEEDS_REVIEW` en 0: `RULE` 1.435, `AI` 3, `MANUAL` 7 [MEDIDO]. Silver no cambió: 89.312 OK, 10.680 WARNING, 8 ERROR.
+  - Criterios: ✅ `asset_type` sin `NEEDS_REVIEW` con origen trazable; ✅ accuracy medida; ✅ `ai_runs` con prompt y modelo; ✅ README §10.
+  - **Límites:** las etiquetas no tienen revisión humana independiente; emisor y sector no están evaluados; 0 `CONFLICT` no prueba acuerdo. Detalle en ADR-011.
+  - **Componente B no ejecutado:** el resumen de EDA necesita `iol_ops.eda_metrics`, de la etapa 08.
+  - Tests locales: 333 passed, en 29 min 45 s.
