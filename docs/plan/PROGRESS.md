@@ -6,7 +6,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 |---|---|---|---|---|
 | 00 Entorno | hecho (local + Databricks) | 99/99 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 10/11 OK, 1 inconcluso (2026-11-01) | Review hecho. Outputs en `notebooks_executed/`. 2 bajas abiertas: fixture (etapa 03) y triple evaluación del MERGE (benchmark) |
 | 01 Profiling + arquitectura | parcial | 99/99 passed (2026-11-01) | `01_data_profiling` y `00_quotes_spike` OK (2026-11-01) | Review hecho. **Pendiente, por dependencia:** benchmark, §6 de `ARCHITECTURE.md` y ADR-010 necesitan Silver y Gold (día 5 de `PLAN.md`). 8 bajas abiertas (ver log) |
-| 02 Bronze | código listo | 124/124 passed (2026-11-01) | **no ejecutado** | Corrida local sobre el CSV completo OK. Falta correr `02_ingest_bronze` en Free Edition y `/review-stage 02` |
+| 02 Bronze | código listo | 132/132 passed (2026-11-01) | **no ejecutado** | Review hecho. Corrida local sobre el CSV completo OK. Falta correr `02_ingest_bronze` en Free Edition. 6 bajas abiertas (ver log) |
 | 03 Silver + calidad | pendiente | — | — | |
 | 04 Instrumentos | pendiente | — | — | |
 | 05 Cotizaciones | pendiente | — | — | |
@@ -163,3 +163,17 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
     - ⏳ `DESCRIBE DETAIL` muestra formato delta: medido en local, **no ejecutado** en Free Edition.
     - ✅ Tests verdes: 124 passed.
   - Sin probar en serverless: `spark.createDataFrame` con 100.000 tuplas por Spark Connect, y la lectura directa del Volume con `open()`.
+- 2026-11-01 — **`/review-stage 02`:** listo con cambios menores, sin severidad alta. Corregidos los 5 de severidad media:
+  - Una línea con campos de más ya no frena el archivo: entra con `extra_fields` y Silver la marca con la regla nueva `DQ008`. Esto cambia la decisión inicial de la etapa. El fixture no tiene ese caso: se suma en la etapa 03. — ADR-002, `quality_rules.md`
+  - Los duplicados exactos dejan sus números de fila en `duplicate_row_numbers`.
+  - Un archivo sin filas da `FAILED_EMPTY` y no escribe.
+  - Si algo falla después del MERGE, la corrida igual registra lo que se escribió.
+  - `orphan_ingestion_runs` detecta filas sin corrida registrada; el notebook termina en `FAILED` y G02 bloquea Gold. No hay transacción entre las dos tablas. — ADR-002, `quality_gates.md`
+  - Tests locales: 132 passed, en 8 min 37 s: los de integración hacen muchos MERGE reales. La ingesta sobre el CSV completo da lo mismo que antes.
+  - Hallazgos de severidad baja, sin corregir:
+    - `02_ingest_bronze` rompe con "tabla no encontrada" si el primer archivo falla, y tapa la causa.
+    - `02_ingest_bronze` no llama a `ensure_schemas`.
+    - `quality_rules.md` dice que ante `DQ001` Bronze conserva el archivo; el archivo queda en landing.
+    - `data_model.md` dice "posición en el archivo"; `source_row_number` numera filas de datos.
+    - Literales fuera de `config.py`: el 256 del hash y las 2 corridas de demostración.
+    - El caso `DQ008` todavía no está en el fixture.
