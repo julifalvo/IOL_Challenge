@@ -22,6 +22,7 @@ def is_databricks() -> bool:
 
 # --- Versiones -----------------------------------------------------------------
 SCHEMA_VERSION = "trades_v1"
+TRADES_TS_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSX"
 RULES_VERSION = "rules_v1"
 MAPPING_VERSION = "map_v1"
 SEGMENT_RULE_VERSION = "seg_v1"
@@ -39,6 +40,7 @@ CHANNELS = {  # origen -> channel_code (dim_channel, preferred_channel)
     "API": "API",
     "IOLnet": "IOLNET",
 }
+CHANNEL_UNKNOWN = "UNKNOWN"
 CHANNEL_FAMILIES = {  # channel_code -> channel_family: agrupación descriptiva (data_model.md)
     "APP_MOBILE": "APP",
     "WEB_DESKTOP": "WEB",
@@ -111,6 +113,12 @@ ACTIVITY_SEGMENTS = [  # (mínimo de operaciones acumuladas, segmento)
 ]
 SCD2_SNAPSHOTS = [date(2026, 1, 31), date(2026, 2, 28), DATA_CUTOFF]
 SCD2_OPEN_END = date(9999, 12, 31)
+
+# --- Profiling (spec 01) ---------------------------------------------------------
+CLIENT_PERCENTILES = (0.5, 0.75, 0.9, 0.95, 0.99)
+PROFILE_TOP_N = 10
+PROFILE_TOP_SYMBOLS = 20
+PROFILE_PRICE_GROUPS = (("AL30", "AL30D", "AL30C"), ("GD30", "GD30D"), ("AAPL", "AAPLD", "AAPLC"))  # base primero
 
 # --- Quality gates (docs/quality_gates.md) -----------------------------------------
 GATE_PARAMS = {

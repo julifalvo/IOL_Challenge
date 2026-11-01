@@ -1,0 +1,55 @@
+"""Calendario de mercado y fecha efectiva de una operación (ADR-003)."""
+from __future__ import annotations
+
+from datetime import date, timedelta
+
+from pyspark.sql import Column, DataFrame
+from pyspark.sql import functions as F
+
+from iol_pipeline import config
+
+SATURDAY = 5
+
+
+def is_business_day(day: date) -> bool:
+    return day.weekday() < SATURDAY and day not in config.MARKET_HOLIDAYS
+
+
+def effective_date(day: date) -> date:
+    """Sábado → último día hábil previo. Cualquier otro día queda igual: domingo y feriado no se reasignan."""
+    if day.weekday() != SATURDAY:
+        return day
+    previous = day - timedelta(days=1)
+    while not is_business_day(previous):
+        previous -= timedelta(days=1)
+    return previous
+
+
+def _wall_clock(ts: Column, tz: str) -> Column:
+    """Hora de pared de un instante en `tz`, sin depender de la zona horaria de la sesión de Spark."""
+    return F.convert_timezone(None, F.lit(tz), ts.cast("timestamp_ntz"))
+
+
+def _saturday_to_effective() -> Column:
+    days = (config.CALENDAR_TO - config.CALENDAR_FROM).days + 1
+    saturdays = [d for d in (config.CALENDAR_FROM + timedelta(days=i) for i in range(days)) if d.weekday() == SATURDAY]
+    return F.create_map(*[F.lit(v) for d in saturdays for v in (d, effective_date(d))])
+
+
+def with_trade_dates(df: DataFrame, ts_col: str = "fecha") -> DataFrame:
+    """Agrega trade_ts_utc, trade_hour_utc, trade_date_utc, trade_ts_local, trade_date_local y effective_trade_date.
+
+    Una fecha que no parsea queda en null en todas: se marca aguas abajo, nunca lanza excepción.
+    """
+    ts = F.try_to_timestamp(F.col(ts_col), F.lit(config.TRADES_TS_FORMAT))
+    utc = _wall_clock(ts, "UTC")
+    local = _wall_clock(ts, config.TZ_MARKET)
+    return (df
+            .withColumn("trade_ts_utc", ts)
+            .withColumn("trade_hour_utc", F.hour(utc))
+            .withColumn("trade_date_utc", F.to_date(utc))
+            .withColumn("trade_ts_local", local)
+            .withColumn("trade_date_local", F.to_date(local))
+            .withColumn("effective_trade_date",
+                        F.coalesce(F.try_element_at(_saturday_to_effective(), F.col("trade_date_local")),
+                                   F.col("trade_date_local"))))
