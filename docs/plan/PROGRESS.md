@@ -4,7 +4,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 
 | Spec | Estado | Tests locales | Databricks | Pendientes / notas |
 |---|---|---|---|---|
-| 00 Entorno | hecho (local + Databricks) | 32/32 passed (2026-10-31) | `00_setup` OK; `00_smoke_test` 9/9 OK (2026-11-01) | `/review-stage 00` pendiente; outputs en `notebooks_executed/00_setup.ipynb` y `00_smoke_test.ipynb` |
+| 00 Entorno | hecho (local + Databricks) | 39/39 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 9/9 OK (2026-11-01), con el criterio anterior de egress | Review hecho. **Pendientes:** volver a correr y exportar `00_smoke_test`, spike ADR-008, hallazgos de severidad baja (ver log del 2026-11-01). Outputs en `notebooks_executed/00_setup.ipynb` y `00_smoke_test.ipynb` |
 | 01 Profiling + arquitectura | pendiente | — | — | |
 | 02 Bronze | pendiente | — | — | |
 | 03 Silver + calidad | pendiente | — | — | |
@@ -79,3 +79,28 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
     - ADR-011: `ai_query` está disponible; el modelo de la etapa 09 se elige entre los 12 endpoints listados.
   - Criterios de aceptación de la etapa 00: los 4 ✅. Falta exportar los notebooks con outputs a `notebooks_executed/`, que es parte del entregable.
   - — ADR-001, ADR-008, ADR-011
+- 2026-11-01 — **Decisión: Free Edition sin consultar a IOL.** No se envió el mail y se eliminó `docs/plan/consulta_iol.md`. ADR-001 pasa a aceptado; el desvío de R-37 se declara en el README. — ADR-001
+- 2026-11-01 — **`/review-stage 00`:** listo con cambios menores, sin severidad alta. Corregidos los de severidad media:
+  - Fórmula de ingesta: `read = inserted + already_present + duplicate_in_file`; `conflict` es subconjunto de `inserted`. — ADR-002, `quality_rules.md`, `data_model.md`, spec 02
+  - `config.CHANNELS` ahora da 5 `channel_code`; las familias van en `CHANNEL_FAMILIES`. — `data_model.md`
+  - `write_delta_merge` falla si el origen trae columnas que el destino no tiene. Antes `INSERT *` las ignoraba sin error [MEDIDO, Spark 4.0.5 local].
+  - La clave del MERGE debe determinar el contenido: queda en el docstring y fijado con test. No hay detección de conflictos en el helper.
+  - Egress: HTTP 403, 407 y 429 pasan a `INCONCLUSO` y se guarda el header `Server`. — ADR-008
+  - Runtime real documentado (Spark 4.2.0, Python 3.12.3) y su diferencia con local. — ADR-001, CLAUDE.md
+  - Tests locales: 39 passed.
+- 2026-11-01 — **Pendientes abiertos de la etapa 00:**
+  - Volver a correr `00_smoke_test` en Free Edition y exportarlo. El `.ipynb` actual es de la versión anterior del notebook: **no ejecutado** con el código corregido.
+  - Spike de cotizaciones de ADR-008 (8 símbolos, 4 proveedores): **no ejecutado**. `PLAN.md` lo ubica en el día 1 y el spec 04 depende de él, así que tiene que estar antes de la etapa 04. La API de IOL requiere cuenta.
+  - Hallazgos de severidad baja, sin corregir:
+    - ADR-003: etiquetar [SUPUESTO] la regla "feriado bursátil = feriado nacional" y alinear el nombre `MARKET_CALENDAR` del spec 00. Evidencia a citar: entre 02/01 y 13/03 los únicos días hábiles sin operaciones son 16 y 17/02 [MEDIDO].
+    - `scripts/profile_local.py:18` tiene su propia lista de feriados.
+    - `00_setup` y `00_smoke_test` salen con `SUCCESS` aunque falte el CSV, no coincida el contrato o falle un chequeo.
+    - El MERGE de `00_smoke_test` no tiene `try`, aunque la cabecera dice que ningún chequeo corta.
+    - Números mágicos 500, 300 y 200 en `00_smoke_test.py` y `smoke.py`.
+    - `write_delta_merge` evalúa el origen 3 veces.
+    - ADR-011 dice que `ai_query` respondió a `ping`; el prompt real fue `Respond with the single word: pong`.
+    - `PLAN.md`: `ALTER TABLE ... CLUSTER BY` sin probar, checklist sin marcar, región sin anotar.
+    - Entradas viejas de este log siguen diciendo "pendiente" o "falta exportar".
+    - El fixture no tiene casos de DQ005, DQ031 ni `tipoTran`/`origen` inválidos. Se suman en la etapa 03.
+    - `00_setup.ipynb` muestra el email del usuario en un output. Decisión del usuario.
+    - `pyproject.toml` declara `>=3.10`; CLAUDE.md pide 3.11 o superior.
