@@ -227,7 +227,7 @@ def test_enrichment_survives_rerunning_the_mapping(spark, schema, trades_small_c
     _load(spark, t, trades_small_csv)
     _run(spark, t, "p1")
     enrichment = f"{schema}.instrument_enrichment"
-    spark.createDataFrame([("AAPL", "CEDEAR", "Apple Inc.", "TECNOLOGIA", "AAPL")], "symbol string, asset_type string, issuer string, sector string, underlying_ticker_foreign string").write.format("delta").saveAsTable(enrichment)
+    spark.createDataFrame([("AAPL", "CEDEAR", "Apple Inc.", "TECNOLOGIA", "AAPL", True)], "symbol string, asset_type string, issuer string, sector string, underlying_ticker_foreign string, is_active boolean").write.format("delta").saveAsTable(enrichment)
 
     instruments.run_instruments(spark, t["trades"], t["instrument_mapping"], enrichment_table=enrichment)
     again = instruments.run_instruments(spark, t["trades"], t["instrument_mapping"], enrichment_table=enrichment)

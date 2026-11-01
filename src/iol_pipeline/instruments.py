@@ -253,7 +253,7 @@ def run_instruments(spark: SparkSession, silver_table: str, mapping_table: str, 
 
     `enrichment_table` es la salida validada de la IA (spec 09), si existe: sin ella, cada corrida desharía su aporte.
     """
-    enrichment = spark.table(enrichment_table) if enrichment_table and spark.catalog.tableExists(enrichment_table) else None
+    enrichment = spark.table(enrichment_table).where("is_active") if enrichment_table and spark.catalog.tableExists(enrichment_table) else None
     mapping = build_mapping(spark.table(silver_table), read_overrides(overrides_path), datetime.now(timezone.utc), enrichment)
     compare = [c for c in MAPPING_COLUMNS if c not in ("symbol", "updated_at")]
     result = io.write_delta_upsert(spark, mapping, mapping_table, ["symbol"], compare)
