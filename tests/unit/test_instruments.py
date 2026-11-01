@@ -1,6 +1,7 @@
 """Clasificación, variantes, overrides y mapeo a proveedor (ADR-004). Corren juntos en un solo DataFrame."""
 from __future__ import annotations
 
+import csv
 from datetime import date, datetime, timezone
 from types import SimpleNamespace
 
@@ -209,6 +210,13 @@ def test_read_overrides_rejects_mistakes(tmp_path, lines, message):
 
 def test_repository_files_are_valid():
     assert instruments.read_overrides() is not None
+
+
+def test_every_override_of_the_repository_says_why_and_who():
+    with instruments.OVERRIDES_PATH.open(newline="", encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+    assert rows
+    assert all(row["reason"].strip() and row["author"].strip() and row["date"].strip() for row in rows)
     stocks = instruments.local_stocks()
     assert {"YPFD", "GGAL", "PAMP"} <= set(stocks)
     assert "AL30" not in stocks and "AAPL" not in stocks

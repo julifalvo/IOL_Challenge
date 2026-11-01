@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
 from iol_pipeline import ai, bronze, config, instruments, silver
 
 pytestmark = pytest.mark.integration
+EMPTY_OVERRIDES = Path(__file__).parents[1] / "fixtures" / "overrides_empty.csv"  # los overrides reales nombran símbolos que estos datos no tienen
 
 
 def _answer(item, asset_type=None):
@@ -31,7 +33,7 @@ def tables(spark, schema, trades_small_csv):
     t = {n: f"{schema}.{n}" for n in ("trades_raw", "ingestion_runs", "trades", "quality_baselines", "quality_events", "instrument_mapping", "ai_runs", "instrument_enrichment")}
     bronze.ingest_trades(spark, str(trades_small_csv), t["trades_raw"], t["ingestion_runs"])
     silver.run_silver(spark, t["trades_raw"], t["trades"], t["quality_baselines"], t["quality_events"], "p1")
-    instruments.run_instruments(spark, t["trades"], t["instrument_mapping"])
+    instruments.run_instruments(spark, t["trades"], t["instrument_mapping"], overrides_path=EMPTY_OVERRIDES)
     return t
 
 
@@ -42,7 +44,7 @@ def test_enrichment_reaches_the_mapping_is_cached_and_stays_stable(spark, tables
     assert first["statuses"][ai.CONFLICT] == 1
     calls_after_first = counter["calls"]
 
-    instruments.run_instruments(spark, tables["trades"], tables["instrument_mapping"], enrichment_table=tables["instrument_enrichment"])
+    instruments.run_instruments(spark, tables["trades"], tables["instrument_mapping"], overrides_path=EMPTY_OVERRIDES, enrichment_table=tables["instrument_enrichment"])
     rows = {r.symbol: r for r in spark.table(tables["instrument_mapping"]).collect()}
     assert rows["AAPL"].asset_type == "CEDEAR" and rows["AAPL"].issuer is None  # contradijo a la regla: no se usa nada de esa respuesta
     assert rows["MSFT"].issuer == "Emisor MSFT" and rows["MSFT"].asset_type_source == "RULE"  # completa campos, no pisa el tipo
@@ -51,7 +53,7 @@ def test_enrichment_reaches_the_mapping_is_cached_and_stays_stable(spark, tables
     second = ai.run_enrichment(spark, tables["instrument_mapping"], tables["ai_runs"], tables["instrument_enrichment"], _model(counter, "AAPL"), "p2", "modelo")
     assert second["consulted"] == 0 and counter["calls"] == calls_after_first  # la caché evita la llamada
     assert second["enrichment_rows_inserted"] == second["enrichment_rows_updated"] == 0
-    again = instruments.run_instruments(spark, tables["trades"], tables["instrument_mapping"], enrichment_table=tables["instrument_enrichment"])
+    again = instruments.run_instruments(spark, tables["trades"], tables["instrument_mapping"], overrides_path=EMPTY_OVERRIDES, enrichment_table=tables["instrument_enrichment"])
     assert again["rows_updated"] == again["rows_inserted"] == 0
 
 

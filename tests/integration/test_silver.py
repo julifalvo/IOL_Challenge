@@ -5,10 +5,13 @@ Los tests que solo leen comparten una corrida: `run_silver` tarda decenas de seg
 from __future__ import annotations
 
 from datetime import date
+from pathlib import Path
 
 import pytest
 
 from iol_pipeline import bronze, config, instruments, quality, silver
+
+EMPTY_OVERRIDES = Path(__file__).parents[1] / "fixtures" / "overrides_empty.csv"  # los overrides reales nombran símbolos que estos datos no tienen
 
 pytestmark = pytest.mark.integration
 TABLES = ("trades_raw", "ingestion_runs", "trades", "quality_baselines", "quality_events", "instrument_mapping")
@@ -200,9 +203,9 @@ def test_mapping_then_silver_is_stable_and_detects_a_missing_symbol(spark, schem
     _load(spark, t, trades_small_csv)
     _run(spark, t, "p1")  # primera vez: todavía no hay mapeo
 
-    first = instruments.run_instruments(spark, t["trades"], t["instrument_mapping"])
+    first = instruments.run_instruments(spark, t["trades"], t["instrument_mapping"], overrides_path=EMPTY_OVERRIDES)
     assert first["rows_inserted"] == first["symbols"] == spark.table(t["trades"]).select("symbol").distinct().where("symbol IS NOT NULL").count()
-    assert instruments.run_instruments(spark, t["trades"], t["instrument_mapping"])["rows_updated"] == 0
+    assert instruments.run_instruments(spark, t["trades"], t["instrument_mapping"], overrides_path=EMPTY_OVERRIDES)["rows_updated"] == 0
 
     reapplied = _run(spark, t, "p2")
     stable = _run(spark, t, "p3")
@@ -216,7 +219,7 @@ def test_mapping_then_silver_is_stable_and_detects_a_missing_symbol(spark, schem
     aapl = spark.table(t["trades"]).where("symbol = 'AAPL'").collect()
     assert aapl and all("DQ030_INSTRUMENT_UNMAPPED" in r.quality_flags for r in aapl)
 
-    instruments.run_instruments(spark, t["trades"], t["instrument_mapping"])
+    instruments.run_instruments(spark, t["trades"], t["instrument_mapping"], overrides_path=EMPTY_OVERRIDES)
     _run(spark, t, "p5")
     assert all("DQ030_INSTRUMENT_UNMAPPED" not in r.quality_flags for r in spark.table(t["trades"]).where("symbol = 'AAPL'").collect())
     assert spark.table(t["quality_events"]).where("rule_code = 'DQ030_INSTRUMENT_UNMAPPED' AND is_active").count() == 0
@@ -229,8 +232,8 @@ def test_enrichment_survives_rerunning_the_mapping(spark, schema, trades_small_c
     enrichment = f"{schema}.instrument_enrichment"
     spark.createDataFrame([("AAPL", "CEDEAR", "Apple Inc.", "TECNOLOGIA", "AAPL", True)], "symbol string, asset_type string, issuer string, sector string, underlying_ticker_foreign string, is_active boolean").write.format("delta").saveAsTable(enrichment)
 
-    instruments.run_instruments(spark, t["trades"], t["instrument_mapping"], enrichment_table=enrichment)
-    again = instruments.run_instruments(spark, t["trades"], t["instrument_mapping"], enrichment_table=enrichment)
+    instruments.run_instruments(spark, t["trades"], t["instrument_mapping"], overrides_path=EMPTY_OVERRIDES, enrichment_table=enrichment)
+    again = instruments.run_instruments(spark, t["trades"], t["instrument_mapping"], overrides_path=EMPTY_OVERRIDES, enrichment_table=enrichment)
 
     assert again["rows_updated"] == again["rows_inserted"] == 0  # estable: no deshace a la IA
     row = spark.table(t["instrument_mapping"]).where("symbol = 'AAPL'").first()
