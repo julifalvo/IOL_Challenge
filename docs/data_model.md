@@ -2,7 +2,7 @@
 
 Contrato de todas las tablas persistentes. Todas son **Delta managed tables en Unity Catalog**. Cualquier cambio de columnas se refleja acá primero.
 
-Convenciones: `*_sk` = clave sustituta (BIGINT, determinista vía `xxhash64` de la clave natural + versión, salvo SCD2); `*_key` de fecha = INT `yyyymmdd`; timestamps en UTC (`TIMESTAMP`), fechas de negocio en hora de Buenos Aires (`DATE`).
+Convenciones: `*_sk` = clave sustituta (BIGINT, determinista vía `xxhash64` de la clave natural + versión, salvo SCD2); `*_key` de fecha = INT `yyyymmdd`; timestamps en UTC (`TIMESTAMP`, salvo `trade_ts_local`), fechas de negocio en hora de Buenos Aires (`DATE`).
 
 ## Diagrama
 
@@ -42,9 +42,11 @@ erDiagram
 |---|---|---|
 | trade_id | STRING | = id_transaccion |
 | trade_ts_utc | TIMESTAMP | parse de `fecha` |
-| trade_ts_local | TIMESTAMP | America/Argentina/Buenos_Aires |
+| trade_hour_utc | INT | hora UTC, para el análisis de la hora del día (ADR-003) |
+| trade_date_utc | DATE | fecha calendario UTC |
+| trade_ts_local | TIMESTAMP_NTZ | hora de pared en America/Argentina/Buenos_Aires. Sin zona, para que no dependa de la sesión de Spark |
 | trade_date_local | DATE | fecha calendario local |
-| effective_trade_date | DATE | día hábil de mercado asignado (ADR-003) |
+| effective_trade_date | DATE | día hábil de mercado asignado (ADR-003). Null si la fecha no parsea o está fuera del calendario |
 | side | STRING | `BUY`/`SELL` |
 | client_id, symbol, description_raw, currency_code, channel_code | STRING | normalizados (trim, mayúsculas donde aplica) |
 | qty | DECIMAL(20,0) | |
