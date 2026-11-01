@@ -11,7 +11,7 @@ Principio: **lo estructural bloquea, lo analítico degrada.** Un problema que ro
 | ID | Check | Umbral | Falla → | Argumento |
 |---|---|---|---|---|
 | G01 | Esquema de entrada = contrato `trades_v1` | 100% | RED | Sin contrato no hay garantía de significado de columnas |
-| G02 | Reconciliación Bronze → Silver → fact_trades → fact_trade_market | 0 diferencias | RED | Requisito de trazabilidad financiera: ninguna fila desaparece |
+| G02 | Reconciliación Bronze → Silver → fact_trades → fact_trade_market, y todo `ingestion_run_id` de Bronze con su corrida en `ingestion_runs` | 0 diferencias | RED | Requisito de trazabilidad financiera: ninguna fila desaparece ni queda sin rastro |
 | G03 | Filas CRITICAL | 0 | RED | No interpretables; si aparecen en este dataset limpio es un cambio de fuente |
 | G04 | `DQ004_ID_CONFLICT` sin resolver | 0 | RED | Riesgo de doble conteo |
 | G05 | SCD2: clientes con ≠1 versión vigente; versiones solapadas; trades sin versión | 0 | RED | Rompe joins históricos |

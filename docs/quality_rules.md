@@ -19,6 +19,7 @@ Umbrales parametrizados en `src/iol_pipeline/config.py` (`QUALITY_PARAMS`), vers
 | DQ005_NUMERIC_UNPARSEABLE | CRITICAL | cantidad/precio no numéricos | Marcar | | 0 |
 | DQ006_NON_POSITIVE | ERROR | qty ≤ 0 o price ≤ 0 | Marcar | Una operación con cantidad o precio ≤0 no existe en BYMA | 0 |
 | DQ007_DOMAIN_INVALID | ERROR | `tipoTran`∉{Compra,Venta}, `moneda`∉{ARS,USD}, `origen`∉ catálogo | Marcar; canal desconocido → `UNKNOWN` | | 0 |
+| DQ008_MALFORMED_ROW | CRITICAL | Línea con más campos que el header (`extra_fields` no nulo) | Conservar la fila en Bronze; marcar en Silver | No se sabe si los valores están corridos: el precio podría estar en otra columna | 0 |
 | DQ010_SATURDAY | WARNING | Fecha local = sábado | `effective_trade_date` = viernes previo hábil | Sin domingos ni Carnaval; lunes empieza ~10 UTC y sábado termina ~19 UTC → cola de la sesión del viernes [HIPÓTESIS, ADR-003] | 10.255 (local) / 12.498 (UTC) |
 | DQ011_SUNDAY | ERROR | Fecha local = domingo | Marcar | No hay mecanismo de mercado que lo explique | 0 |
 | DQ012_MARKET_HOLIDAY | ERROR | Fecha local = feriado bursátil (calendario en config) | Marcar | El dataset respeta feriados: un trade en feriado es anómalo | 0 |

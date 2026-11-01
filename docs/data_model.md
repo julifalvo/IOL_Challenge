@@ -25,7 +25,8 @@ erDiagram
 |---|---|---|
 | fecha, tipoTran, id_cliente, descripcion_titulo, moneda, simbolo_titulo, id_transaccion, origen | STRING | **originales, sin tipar** |
 | cantidad, precio | STRING | originales como texto (el tipado es de Silver) |
-| record_hash | STRING | sha2-256 de las 10 columnas originales concatenadas con separador `\u001f` |
+| extra_fields | STRING | JSON con los campos de más de una línea mal formada; null si no hay. Lo marca `DQ008` |
+| record_hash | STRING | sha2-256 de las 10 columnas originales y `extra_fields`, concatenadas con separador `\u001f`; con `extra_fields` null, solo las 10 columnas |
 | source_file, source_file_hash | STRING | ruta en Volume y sha256 del archivo |
 | source_row_number | BIGINT | posición en el archivo (trazabilidad) |
 | ingestion_run_id | STRING | UUID del run que la insertó |
@@ -126,7 +127,7 @@ Fila de versión inicial: `valid_from` = fecha de primera operación del cliente
 | Tabla | Granularidad | Columnas clave |
 |---|---|---|
 | `pipeline_runs` | run × etapa | pipeline_run_id, stage, started_at, ended_at, status, rows_in, rows_out, error |
-| `ingestion_runs` | run de ingesta (crece una fila por corrida) | ingestion_run_id, pipeline_run_id, source_file, source_file_hash, rows_read, rows_inserted, rows_already_present, rows_conflict, rows_duplicate_in_file, status, error, started_at, ended_at |
+| `ingestion_runs` | run de ingesta (crece una fila por corrida) | ingestion_run_id, pipeline_run_id, source_file, source_file_hash, rows_read, rows_inserted, rows_already_present, rows_conflict, rows_duplicate_in_file, duplicate_row_numbers (ARRAY<BIGINT>), status, error, started_at, ended_at |
 | `quality_events` | evento | event_id, pipeline_run_id, trade_id, rule_code, severity, details_json |
 | `pipeline_metrics` | run × métrica | pipeline_run_id, stage, metric_name, observed_value, threshold, comparator, status, details |
 | `gold_status` | run | pipeline_run_id, status (GREEN/YELLOW/RED), failed_checks, warnings, decided_at |
