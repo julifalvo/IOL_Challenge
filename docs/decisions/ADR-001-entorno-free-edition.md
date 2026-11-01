@@ -17,16 +17,17 @@ Ejecutar en Free Edition respetando el espíritu de la restricción: costo cero,
 
 ## Resultado del smoke test
 - **Cómo se obtiene:** corriendo `notebooks/00_setup.py` y `notebooks/00_smoke_test.py`. El detalle queda en `iol_ops.smoke_test_results`, filtrado por `smoke_run_id`.
-- **Estado:** en curso. `00_setup` corrido; `00_smoke_test` no ejecutado.
+- **Estado:** ejecutado el 2026-11-01. `00_setup` sin errores; `00_smoke_test` con 9/9 chequeos OK, `smoke_run_id = 1cc453e0-7d65-4a74-b2c2-4387cc92ec8d`.
 
 | Prueba | Resultado | Fecha |
 |---|---|---|
 | Crear schema + volume | Schemas: OK [MEDIDO], `SHOW SCHEMAS` de `00_setup` lista `iol_bronze`, `iol_gold`, `iol_ops`, `iol_silver`. Volume: OK [MEDIDO], `SHOW VOLUMES` lista `iol_bronze.landing`. CSV en `landing/trades/`: OK [MEDIDO], `data-set-challenge-5-.csv` de 12.242.003 bytes (mismo tamaño que el del profiling local), header = contrato `trades_v1` | 2026-11-01 |
 | Git folder + import de `src/` | OK [MEDIDO]: la celda que muestra `SHOW SCHEMAS` llama antes a `io.ensure_schemas`, importado desde `src/` | 2026-11-01 |
-| `dbutils.notebook.run` | | |
-| Egress a proveedores | ver ADR-008 | |
-| `ai_query` | ver ADR-011 | |
-| Liquid clustering | | |
+| `dbutils.notebook.run` | OK [MEDIDO]: el hijo devolvió `{"status": "SUCCESS", "echo": "<smoke_run_id>"}` | 2026-11-01 |
+| Egress a proveedores | Los 4 dominios responden; Yahoo con HTTP 429. Detalle en ADR-008 | 2026-11-01 |
+| `ai_query` | OK [MEDIDO] con `databricks-meta-llama-3-3-70b-instruct`. Detalle en ADR-011 | 2026-11-01 |
+| Liquid clustering | OK [MEDIDO]: `CREATE TABLE ... CLUSTER BY (d)` y `DESCRIBE DETAIL` devuelve `clusteringColumns=['d']` | 2026-11-01 |
+| `write_delta_merge` idempotente en UC | OK [MEDIDO]: 1ra corrida 8 insertadas; 2da corrida 0 insertadas, 8 ya presentes | 2026-11-01 |
 
 ## Cuándo revisar
 Si IOL indica otro entorno, o si Free Edition cambia sus límites durante el challenge.

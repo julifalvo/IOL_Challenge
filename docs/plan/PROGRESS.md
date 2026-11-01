@@ -4,7 +4,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 
 | Spec | Estado | Tests locales | Databricks | Pendientes / notas |
 |---|---|---|---|---|
-| 00 Entorno | implementado; Databricks en curso | 32/32 passed (2026-10-31) | `00_setup` OK: 4 schemas, Volume `landing`, CSV 12.242.003 bytes con header = contrato (2026-11-01); `00_smoke_test` no ejecutado | ⏳ correr `00_smoke_test` y volcar resultados en ADR-001/008/011 |
+| 00 Entorno | hecho en Databricks; falta exportar outputs | 32/32 passed (2026-10-31) | `00_setup` OK; `00_smoke_test` 9/9 OK (2026-11-01) | ⏳ exportar `.ipynb` con outputs a `notebooks_executed/`; `/review-stage 00` |
 | 01 Profiling + arquitectura | pendiente | — | — | |
 | 02 Bronze | pendiente | — | — | |
 | 03 Silver + calidad | pendiente | — | — | |
@@ -61,5 +61,21 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - Criterios de aceptación:
     - ✅ `pytest -q` corre localmente: 32 passed.
     - ✅ El fixture cubre todos los casos.
-    - ⏳ Notebook 00 corre en Free Edition: **no ejecutado**.
-    - ⏳ Resultados del smoke test anotados en ADR-001/008/011: **no ejecutado**.
+    - ⏳ Notebook 00 corre en Free Edition: **no ejecutado**. Cerrado el 2026-11-01, ver entrada siguiente.
+    - ⏳ Resultados del smoke test anotados en ADR-001/008/011: **no ejecutado**. Cerrado el 2026-11-01, ver entrada siguiente.
+- 2026-11-01 — **Etapa 00 corrida en Free Edition.**
+  - `00_setup` sin errores:
+    - 4 schemas `iol_*` creados;
+    - Volume `iol_bronze.landing` creado;
+    - CSV de 12.242.003 bytes (mismo tamaño que el local), header = contrato `trades_v1`.
+  - `00_smoke_test` con 9/9 OK, `smoke_run_id = 1cc453e0-7d65-4a74-b2c2-4387cc92ec8d`, guardado en `iol_ops.smoke_test_results`:
+    - `notebook.run` funciona;
+    - liquid clustering funciona;
+    - `write_delta_merge` es idempotente en UC (8 insertadas, después 0);
+    - `ai_query` responde con Llama 3.3 70B;
+    - egress HTTP 200 a IOL, BYMA y data912; Yahoo responde HTTP 429.
+  - Consecuencias:
+    - ADR-008: el modo `api` desde Databricks es viable a nivel red, pero los endpoints de datos no se probaron. El fetcher local queda como plan B por rate limiting o términos de uso, no por egress.
+    - ADR-011: `ai_query` está disponible; el modelo de la etapa 09 se elige entre los 12 endpoints listados.
+  - Criterios de aceptación de la etapa 00: los 4 ✅. Falta exportar los notebooks con outputs a `notebooks_executed/`, que es parte del entregable.
+  - — ADR-001, ADR-008, ADR-011

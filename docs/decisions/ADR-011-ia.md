@@ -13,9 +13,15 @@ Está **dentro** del pipeline: mejora `dim_instrument`, el mapeo a la fuente de 
 ## Integración (completar con smoke test)
 | Modo | Disponible | Notas |
 |---|---|---|
-| `ai_query` en Databricks | | modelo: |
-| API externa (offline batch → Volume) | | |
+| `ai_query` en Databricks | sí [MEDIDO] 2026-11-01 | modelo: `databricks-meta-llama-3-3-70b-instruct`; `ai_query(..., 'ping')` respondió `pong` |
+| API externa (offline batch → Volume) | no evaluado | innecesario mientras `ai_query` funcione |
 | Manual en claude.ai con prompt versionado | sí | válido según PDF |
+
+### Endpoints de serving disponibles en Free Edition [MEDIDO, 2026-11-01]
+`databricks-bge-large-en`, `databricks-deepseek-v4-flash-0731`, `databricks-gemma-3-12b`, `databricks-gpt-oss-120b`, `databricks-gpt-oss-20b`, `databricks-gte-large-en`, `databricks-llama-4-maverick`, `databricks-meta-llama-3-1-8b-instruct`, `databricks-meta-llama-3-3-70b-instruct`, `databricks-qwen3-embedding-0-6b`, `databricks-qwen3-next-80b-a3b-instruct`, `databricks-qwen35-122b-a10b`.
+
+- El modelo de la etapa 09 se elige ahí, con la muestra etiquetada. Llama 3.3 70B solo se probó con `ping`: su calidad para clasificar no está medida.
+- `config.SMOKE_AI_MODEL` deja de ser [SUPUESTO]: el endpoint existe y respondió.
 
 ## Privacidad
 Solo metadatos de instrumentos y agregados. Ningún `id_cliente`, `id_transaccion` ni fila transaccional sale del workspace.

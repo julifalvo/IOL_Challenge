@@ -87,7 +87,7 @@ SMOKE_EGRESS_URLS = {
     "data912": "https://data912.com",
     "yahoo_finance": "https://query1.finance.yahoo.com",
 }
-SMOKE_AI_MODEL = "databricks-meta-llama-3-3-70b-instruct"  # [SUPUESTO] cambiar por widget si no existe
+SMOKE_AI_MODEL = "databricks-meta-llama-3-3-70b-instruct"  # [MEDIDO] disponible en Free Edition (smoke 2026-11-01, ADR-011)
 SMOKE_CHILD_TIMEOUT_S = 60
 
 # --- Segmentación SCD2 (ADR-007) -------------------------------------------------
