@@ -22,6 +22,9 @@ def is_databricks() -> bool:
 
 # --- Versiones -----------------------------------------------------------------
 SCHEMA_VERSION = "trades_v1"
+RECORD_HASH_SEPARATOR = "\u001f"
+HASH_CHUNK_BYTES = 1024 * 1024
+RUN_ERROR_MAX_CHARS = 500
 TRADES_TS_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSX"
 RULES_VERSION = "rules_v1"
 MAPPING_VERSION = "map_v1"
