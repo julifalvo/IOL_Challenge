@@ -173,6 +173,19 @@ DISAGREEMENT_EXAMPLES = 10
 BYMA_SYMBOL_SUFFIX = " 24HS"
 YAHOO_SYMBOL_SUFFIX = ".BA"
 
+# --- IA (ADR-011, spec 09) ---------------------------------------------------------
+AI_MODEL = "databricks-meta-llama-3-3-70b-instruct"
+AI_EVAL_MODELS = ("databricks-meta-llama-3-3-70b-instruct", "databricks-gpt-oss-120b", "databricks-qwen3-next-80b-a3b-instruct")
+AI_PROMPT_VERSION = "instrument_enrichment_v1"
+AI_BATCH_SIZE = 50
+AI_MAX_TOKENS = 8000
+AI_TEMPERATURE = 0.0
+AI_MIN_CONFIDENCE = 0.6  # [SUPUESTO] por debajo no se usa el resultado
+AI_MAX_ISSUER_CHARS = 120
+AI_EXAMPLE_ROWS = 25
+AI_SECTORS = ("FINANCIERO", "ENERGIA", "UTILITIES", "MATERIALES", "INDUSTRIAL", "CONSUMO", "TECNOLOGIA", "SALUD", "COMUNICACIONES",
+              "INMOBILIARIO", "SOBERANO", "SUBSOBERANO", "ETF", "OTRO")
+
 # --- Segmentación SCD2 (ADR-007) -------------------------------------------------
 # Cortes congelados en seg_v1 a partir de p75/p90-p95/p99 de ops por cliente.
 ACTIVITY_SEGMENTS = [  # (mínimo de operaciones acumuladas, segmento)
