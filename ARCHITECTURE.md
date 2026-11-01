@@ -6,8 +6,8 @@ Documento técnico para el equipo que mantiene el pipeline. Las decisiones y sus
 
 | Parte | Estado |
 |---|---|
-| Entorno, helpers de escritura, calendario, profiling | Implementado |
-| Bronze, Silver, instrumentos, cotizaciones, Gold, gates, EDA, IA, orquestador | Diseñado en `docs/specs/`, **no implementado** |
+| Entorno, helpers de escritura, calendario, profiling, Bronze | Implementado |
+| Silver, instrumentos, cotizaciones, Gold, gates, EDA, IA, orquestador | Diseñado en `docs/specs/`, **no implementado** |
 | Benchmark y comparativa de cómputo (§6) | **No ejecutado** |
 
 Los números de este documento salen del notebook `01_data_profiling`, corrido en Free Edition sobre el CSV completo [MEDIDO, 2026-11-01; `notebooks_executed/01_data_profiling.ipynb`].
@@ -88,7 +88,7 @@ Contrato completo en `docs/data_model.md`.
 ## 5. Estrategia de escalabilidad
 
 ### 5.1 Ingesta incremental
-Hoy hay un CSV único con `MERGE`, y `pandas` numera las filas porque serverless no tiene RDD. Eso no escala. En producción: Auto Loader o `COPY INTO` sobre landing particionado por fecha, con checkpoint por archivo y el mismo `record_hash` como clave. La trazabilidad de fila pasa a ser archivo + hash, sin número de línea.
+Hoy hay un CSV único con `MERGE`, y el módulo `csv` de Python numera las filas en el driver, porque serverless no tiene RDD. Eso no escala. En producción: Auto Loader o `COPY INTO` sobre landing particionado por fecha, con checkpoint por archivo y el mismo `record_hash` como clave. La trazabilidad de fila pasa a ser archivo + hash, sin número de línea.
 
 ### 5.2 Clustering y layout físico
 Liquid clustering por `(effective_trade_date_key, instrument_sk)` en los hechos y por `client_id` en `dim_client` (ADR-012). No se particiona por fecha: a este volumen generaría archivos chicos. El efecto se mide a 100x; a 1x se espera una diferencia nula o mínima.
@@ -111,7 +111,7 @@ Por `ingestion_run_id` o rango de fechas. Silver reaplica reglas cuando cambia `
 
 ## 7. Operación
 
-Los notebooks de las etapas 02 en adelante son el diseño previsto; todavía no existen.
+Los notebooks de las etapas 03 en adelante son el diseño previsto; todavía no existen.
 
 ### 7.1 Correr el pipeline
 1. Una vez por workspace: `00_setup` (schemas, Volume, chequeo del CSV).
