@@ -12,7 +12,7 @@ Umbrales parametrizados en `src/iol_pipeline/config.py` (`QUALITY_PARAMS`), vers
 
 | Código | Severidad | Regla | Acción | Contexto / argumento | Observado (profiling) |
 |---|---|---|---|---|---|
-| DQ001_SCHEMA_MISMATCH | CRITICAL | Columnas ≠ contrato `trades_v1` | Run abortado antes de escribir Silver; Bronze conserva el archivo | Un cambio de esquema rompe todo lo de aguas abajo | 0 |
+| DQ001_SCHEMA_MISMATCH | CRITICAL | Columnas ≠ contrato `trades_v1` | Run `FAILED_SCHEMA`: no se escribe Bronze y el archivo queda en landing | Un cambio de esquema rompe todo lo de aguas abajo | 0 |
 | DQ002_REQUIRED_NULL | CRITICAL | Nulo/vacío en cualquier campo | Marcar | Sin ID/fecha/símbolo no hay trazabilidad | 0 |
 | DQ003_TS_UNPARSEABLE | CRITICAL | `fecha` no parsea ISO-8601 | Marcar | | 0 |
 | DQ004_ID_CONFLICT | CRITICAL | Mismo `id_transaccion` con distinto `record_hash` | Conservar ambas versiones en Bronze, marcar en Silver, evento | Doble conteo o pérdida silenciosa = riesgo regulatorio | 0 |

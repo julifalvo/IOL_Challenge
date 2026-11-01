@@ -28,7 +28,7 @@ erDiagram
 | extra_fields | STRING | JSON con los campos de más de una línea mal formada; null si no hay. Lo marca `DQ008` |
 | record_hash | STRING | sha2-256 de las 10 columnas originales y `extra_fields`, concatenadas con separador `\u001f`; con `extra_fields` null, solo las 10 columnas |
 | source_file, source_file_hash | STRING | ruta en Volume y sha256 del archivo |
-| source_row_number | BIGINT | posición en el archivo (trazabilidad) |
+| source_row_number | BIGINT | número de fila de datos en el archivo, desde 1; las líneas en blanco no cuentan, así que puede no coincidir con el número de línea |
 | ingestion_run_id | STRING | UUID del run que la insertó |
 | ingested_at | TIMESTAMP | |
 | schema_version | STRING | `trades_v1` |
