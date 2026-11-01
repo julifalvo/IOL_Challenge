@@ -11,13 +11,13 @@
 
 ## Decisión
 1. `gross_amount = qty × price` en la escala del dataset (por 1 VN). Se documenta en el diccionario.
-2. `dim_instrument.price_scale_factor` lleva el precio del proveedor a esa escala.
+2. `dim_instrument.price_scale_factor` lleva el precio del proveedor a esa escala. Es **por símbolo y proveedor**: dentro de un mismo proveedor y tipo de activo hay series a ×1, ×1/3 y ×0,1 [MEDIDO, ADR-008].
 3. **Sanity check automático** por símbolo: mediana de `price_trade / close` en [0,5; 2] o `SCALE_SUSPECT`.
 4. `DQ021_POSSIBLE_SCALE_ERROR` (ERROR) cuando el precio de un trade está a ×50 o ×1/50 de la mediana del símbolo: no entra a métricas de importe ni a comparación con mercado; se conserva y se reporta.
 5. Outliers (`DQ020`) se evalúan sobre log(importe) por (asset_type, moneda), no sobre cantidad.
 
 ## Límite del sanity check (spike del 2026-11-01, ADR-008)
-El rango [0,5; 2] detecta errores de escala groseros, como `YPFD` a ×10, pero no sesgos menores: BYMA da AL30 ajustado y la relación queda en 1,15, dentro del rango [MEDIDO]. **Pendiente para la etapa 05:** decidir con la cobertura completa si se achica el rango, y dónde. `config.SCALE_SANITY_RANGE` no cambia hasta tener esa evidencia.
+El rango [0,5; 2] detecta errores de escala groseros, como `YPFD` a ×10 o SPY a ×3, pero no sesgos menores: BYMA da AL30 con relación 1,15, YM34D con 1,04 y MSFT con 1,0086, todos dentro del rango [MEDIDO]. **Pendiente para la etapa 05:** decidir con la cobertura completa si se achica el rango, y dónde. `config.SCALE_SANITY_RANGE` no cambia hasta tener esa evidencia.
 
 ## Por qué no "corregir" multiplicando por 100
 No sabemos si el error está en precio, en cantidad o en ambos (el importe puede ser correcto). Corregir sin confirmación del origen sería inventar datos. Se marca y se escala al dueño del dato (canal IOLnet).

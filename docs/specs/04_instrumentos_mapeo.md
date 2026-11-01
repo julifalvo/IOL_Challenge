@@ -19,7 +19,7 @@ Resultado → `iol_ops.instrument_mapping` → `iol_gold.dim_instrument` (SCD1, 
 
 ## Mapeo a proveedor (`provider_symbol`) y escala
 - Una función por proveedor `to_provider_symbol(symbol, asset_type, settlement_variant)`; ejemplo yfinance: `AL30 → AL30.BA`, `AL30D → AL30D.BA`, `AAPL → AAPL.BA` (verificar cada uno en el spike de spec 05; lo que no se verifica queda `UNVERIFIED`).
-- `price_scale_factor` por (provider, asset_type): bonos/letras cotizados por 100 VN en el proveedor → 0,01; acciones/CEDEARs → 1. **Se valida empíricamente**, no se asume: sanity check de spec 05.
+- `price_scale_factor` por (symbol, provider). El valor inicial sale de (provider, asset_type): bonos/letras cotizados por 100 VN en el proveedor → 0,01; acciones/CEDEARs → 1. **Se valida empíricamente por símbolo**, no se asume: `YPFD` y SPY tienen otra escala en BYMA y Yahoo (ADR-008). Sanity check de spec 05.
 
 ## Tests
 - `YPFD` ARS → ACCION_LOCAL (si descripción "YPF" y regla de acciones/override), `settlement_variant=ARS`.
