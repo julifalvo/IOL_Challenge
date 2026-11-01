@@ -6,9 +6,11 @@ en NEEDS_REVIEW (spec 09), y overrides manuales que ganan sobre todo. Hay una fi
 from __future__ import annotations
 
 import csv
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from functools import lru_cache
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from pyspark.sql import Column, DataFrame, SparkSession, Window
 from pyspark.sql import functions as F
@@ -93,23 +95,32 @@ def classify_by_rules(catalog: DataFrame) -> DataFrame:
     """Agrega asset_type, underlying_key, settlement_variant y maturity_date.
 
     Variante solo si es USD, termina en D o C, y existe el símbolo base en ARS con la misma descripción o el mismo
-    tipo. El sufijo solo no alcanza: `YPFD`, `C` y `BA.C` están en pesos. Una variante sin tipo hereda el de su base.
+    tipo, o un único símbolo en ARS con la misma descripción. Con dos o más no se elige: sería inventar una relación.
+    El sufijo solo no alcanza: `YPFD`, `C` y `BA.C` están en pesos. Una variante sin tipo hereda el de su base.
     """
     typed = catalog.withColumn("_type", asset_type_by_rules(F.col("symbol"), F.coalesce("description_canonical", F.lit(""))))
     bases = typed.where(F.col("currency_code") == "ARS").select(
         F.col("symbol").alias("_base"), F.col("_type").alias("_base_type"), F.lower("description_canonical").alias("_base_description"))
     is_usd = F.col("currency_code") == "USD"
     candidate = F.when(is_usd & F.col("symbol").rlike(r"[DC]$"), F.regexp_replace("symbol", VARIANT_SUFFIX_PATTERN, ""))
-    joined = typed.withColumn("_base", candidate).join(bases, "_base", "left")
-    same_underlying = ((F.lower("description_canonical") == F.col("_base_description"))
+    siblings = (bases.where(F.col("_base_description").isNotNull()).groupBy(F.col("_base_description").alias("_own_description"))
+                .agg(F.count("*").alias("_siblings"), F.first("_base").alias("_sibling"), F.first("_base_type").alias("_sibling_type"))
+                .where("_siblings = 1").drop("_siblings"))
+    joined = (typed.withColumn("_base", candidate).withColumn("_own_description", F.lower("description_canonical"))
+              .join(bases, "_base", "left").join(siblings, "_own_description", "left"))
+    same_underlying = ((F.col("_own_description") == F.col("_base_description"))
                        | ((F.col("_type") == F.col("_base_type")) & (F.col("_type") != NEEDS_REVIEW)))
-    is_variant = F.col("_base_type").isNotNull() & same_underlying
+    by_suffix = F.coalesce(F.col("_base_type").isNotNull() & same_underlying, F.lit(False))
+    by_description = candidate.isNotNull() & ~by_suffix & F.col("_sibling").isNotNull()
+    is_variant = by_suffix | by_description
+    base_symbol = F.when(by_suffix, F.col("_base")).when(by_description, F.col("_sibling"))
+    base_type = F.when(by_suffix, F.col("_base_type")).when(by_description, F.col("_sibling_type"))
 
     option_underlying = F.try_element_at(
         F.create_map(*[F.lit(v) for pair in config.OPTION_UNDERLYING.items() for v in pair]),
         F.regexp_extract("symbol", OPTION_PREFIX_PATTERN, 1))
     return (joined
-            .withColumn("asset_type", F.when(is_variant & (F.col("_type") == NEEDS_REVIEW), F.col("_base_type")).otherwise(F.col("_type")))
+            .withColumn("asset_type", F.when(is_variant & (F.col("_type") == NEEDS_REVIEW), base_type).otherwise(F.col("_type")))
             .withColumn("settlement_variant",
                         F.when(F.col("currency_code") == "ARS", "ARS")
                         .when(is_usd & is_variant & F.col("symbol").endswith("D"), "USD_MEP")
@@ -117,11 +128,11 @@ def classify_by_rules(catalog: DataFrame) -> DataFrame:
                         .when(is_usd, "USD_OTHER")
                         .otherwise("UNKNOWN"))
             .withColumn("underlying_key",
-                        F.when(is_variant, F.col("_base"))
+                        F.when(is_variant, base_symbol)
                         .when(F.col("_type") == "OPCION", F.coalesce(option_underlying, F.col("symbol")))
                         .otherwise(F.col("symbol")))
             .withColumn("maturity_date", maturity_date(F.coalesce("description_canonical", F.lit(""))))
-            .drop("_base", "_base_type", "_base_description", "_type"))
+            .drop("_base", "_base_type", "_base_description", "_type", "_own_description", "_sibling", "_sibling_type"))
 
 
 def with_provider(classified: DataFrame) -> DataFrame:
@@ -151,8 +162,24 @@ def with_provider(classified: DataFrame) -> DataFrame:
                         .otherwise("UNSUPPORTED")))
 
 
+def _validate_override(field: str, symbol: str, value: str) -> None:
+    allowed = {"asset_type": config.ASSET_TYPES, "settlement_variant": config.SETTLEMENT_VARIANTS, "mapping_status": config.MAPPING_STATUSES}.get(field)
+    if not value.strip():
+        raise ValueError(f"Override de {field} vacío para {symbol}")
+    if allowed is not None and value not in allowed:
+        raise ValueError(f"Override inválido para {symbol}: {field} = {value!r}, se esperaba uno de {allowed}")
+    try:
+        if field == "price_scale_factor" and float(value) <= 0:
+            raise ValueError("debe ser positivo")
+        if field == "maturity_date":
+            date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"Override inválido para {symbol}: {field} = {value!r} ({exc})") from exc
+
+
 def read_overrides(path: Path = OVERRIDES_PATH) -> dict[str, dict[str, str]]:
-    """Campo -> símbolo -> valor. Falla ante un campo desconocido o repetido: un override mal escrito no puede pasar callado."""
+    """Campo -> símbolo -> valor. Falla ante un campo, un valor o un símbolo repetido inválidos: un override mal escrito
+    no puede pasar callado. Que el símbolo exista se controla en `build_mapping`."""
     overrides: dict[str, dict[str, str]] = {}
     with path.open(newline="", encoding="utf-8") as fh:
         reader = csv.DictReader(fh)
@@ -164,6 +191,7 @@ def read_overrides(path: Path = OVERRIDES_PATH) -> dict[str, dict[str, str]]:
                 raise ValueError(f"{path}: campo desconocido {field!r} para {symbol}")
             if symbol in overrides.setdefault(field, {}):
                 raise ValueError(f"{path}: {symbol} tiene {field} repetido")
+            _validate_override(field, symbol, row["value"])
             overrides[field][symbol] = row["value"]
     return overrides
 
@@ -180,21 +208,53 @@ def apply_overrides(mapping: DataFrame, overrides: dict[str, dict[str, str]]) ->
     return result
 
 
-def build_mapping(trades: DataFrame, overrides: dict[str, dict[str, str]], updated_at: datetime) -> DataFrame:
-    """Una fila por símbolo, lista para `iol_ops.instrument_mapping`. La IA completa issuer, sector y ticker en el spec 09."""
-    base = (with_provider(classify_by_rules(symbol_catalog(trades)))
-            .withColumn("asset_type_source", F.lit("RULE"))
-            .withColumn("issuer", F.lit(None).cast("string"))
-            .withColumn("sector", F.lit(None).cast("string"))
-            .withColumn("underlying_ticker_foreign", F.lit(None).cast("string"))
+def apply_enrichment(classified: DataFrame, enrichment: DataFrame | None) -> DataFrame:
+    """Agrega issuer, sector y ticker de la IA. La IA no pisa reglas: su tipo solo vale para lo que está en NEEDS_REVIEW."""
+    base = classified.withColumn("asset_type_source", F.lit("RULE"))
+    if enrichment is None:
+        return (base.withColumn("issuer", F.lit(None).cast("string")).withColumn("sector", F.lit(None).cast("string"))
+                .withColumn("underlying_ticker_foreign", F.lit(None).cast("string")))
+    ai = enrichment.select("symbol", F.col("asset_type").alias("_ai_type"), "issuer", "sector", "underlying_ticker_foreign")
+    from_ai = (F.col("asset_type") == NEEDS_REVIEW) & F.col("_ai_type").isNotNull()
+    return (base.join(ai, "symbol", "left")
+            .withColumn("asset_type_source", F.when(from_ai, "AI").otherwise(F.col("asset_type_source")))
+            .withColumn("asset_type", F.when(from_ai, F.col("_ai_type")).otherwise(F.col("asset_type")))
+            .drop("_ai_type"))
+
+
+def _check_override_symbols(catalog: DataFrame, overrides: dict[str, dict[str, str]]) -> None:
+    wanted = {symbol for by_symbol in overrides.values() for symbol in by_symbol}
+    if wanted:
+        found = {r[0] for r in catalog.where(F.col("symbol").isin(list(wanted))).select("symbol").collect()}
+        if wanted - found:
+            raise ValueError(f"Overrides de símbolos que no existen: {sorted(wanted - found)}")
+
+
+def build_mapping(trades: DataFrame, overrides: dict[str, dict[str, str]], updated_at: datetime, enrichment: DataFrame | None = None) -> DataFrame:
+    """Una fila por símbolo, lista para `iol_ops.instrument_mapping`.
+
+    Orden: reglas, IA, override de tipo, proveedor, demás overrides. El proveedor sale del tipo final: un tipo
+    corregido a mano o por IA también tiene que recibir cotizaciones.
+    """
+    catalog = symbol_catalog(trades)
+    _check_override_symbols(catalog, overrides)
+    type_overrides = {field: values for field, values in overrides.items() if field == "asset_type"}
+    other_overrides = {field: values for field, values in overrides.items() if field != "asset_type"}
+    typed = apply_overrides(apply_enrichment(classify_by_rules(catalog), enrichment), type_overrides)
+    return (apply_overrides(with_provider(typed), other_overrides)
             .withColumn("mapping_version", F.lit(config.MAPPING_VERSION))
-            .withColumn("updated_at", F.lit(updated_at)))
-    return apply_overrides(base, overrides).select(*MAPPING_COLUMNS)
+            .withColumn("updated_at", F.lit(updated_at))
+            .select(*MAPPING_COLUMNS))
 
 
-def run_instruments(spark: SparkSession, silver_table: str, mapping_table: str, overrides_path: Path = OVERRIDES_PATH) -> dict[str, int]:
-    """Reconstruye el mapeo desde Silver. Con el mismo input no toca nada, ni siquiera `updated_at`."""
-    mapping = build_mapping(spark.table(silver_table), read_overrides(overrides_path), datetime.now(timezone.utc))
+def run_instruments(spark: SparkSession, silver_table: str, mapping_table: str, overrides_path: Path = OVERRIDES_PATH,
+                    enrichment_table: str | None = None) -> dict[str, int]:
+    """Reconstruye el mapeo desde Silver. Con el mismo input no toca nada, ni siquiera `updated_at`.
+
+    `enrichment_table` es la salida validada de la IA (spec 09), si existe: sin ella, cada corrida desharía su aporte.
+    """
+    enrichment = spark.table(enrichment_table) if enrichment_table and spark.catalog.tableExists(enrichment_table) else None
+    mapping = build_mapping(spark.table(silver_table), read_overrides(overrides_path), datetime.now(timezone.utc), enrichment)
     compare = [c for c in MAPPING_COLUMNS if c not in ("symbol", "updated_at")]
     result = io.write_delta_upsert(spark, mapping, mapping_table, ["symbol"], compare)
     return {**result, "symbols": spark.table(mapping_table).count()}
@@ -216,6 +276,32 @@ def variants_with_implied_fx(mapping: DataFrame, trades: DataFrame) -> DataFrame
             .withColumn("implied_fx", F.when(F.col("settlement_variant").startswith("USD"), F.round(F.col("_base_price") / F.col("median_price"), 2)))
             .select("underlying_key", "symbol", "currency_code", "settlement_variant", "asset_type", "median_price", "implied_fx", "ops")
             .orderBy(F.col("underlying_key"), F.col("symbol")))
+
+
+def variants_fx_out_of_range(variants: DataFrame) -> DataFrame:
+    """Variantes con un cambio implícito fuera de `config.VARIANT_FX_RANGE`. Con pocas operaciones suele ser iliquidez; si no, revisar."""
+    low, high = config.VARIANT_FX_RANGE
+    return variants.where((F.col("implied_fx") < low) | (F.col("implied_fx") > high)).orderBy(F.col("ops").desc())
+
+
+def agreement_with_provider_lists(spark: SparkSession, mapping: DataFrame, get: Callable[..., Any]) -> DataFrame:
+    """Compara la clasificación con las listas por tipo de data912. Una lista que no se puede bajar se informa y no corta nada."""
+    types = {r.symbol: r.asset_type for r in mapping.select("symbol", "asset_type").collect()}
+    rows = []
+    for name, expected in config.DATA912_LIST_TYPES.items():
+        independent = name not in config.DATA912_NOT_INDEPENDENT_LISTS
+        try:
+            response = get(config.DATA912_LIVE_URL.format(name=name), timeout=config.HTTP_TIMEOUT_S)
+            listed = {row["symbol"] for row in response.json()}
+        except Exception as exc:
+            rows.append((name, independent, 0, 0, 0, 0, None, f"{type(exc).__name__}: {str(exc)[:config.SMOKE_ERROR_MAX_CHARS]}"))
+            continue
+        found = sorted(listed & set(types))
+        disagree = [s for s in found if types[s] not in expected and types[s] != NEEDS_REVIEW]
+        pending = sum(1 for s in found if types[s] == NEEDS_REVIEW)
+        rows.append((name, independent, len(found), len(found) - len(disagree) - pending, pending, len(disagree),
+                     ", ".join(disagree[:config.DISAGREEMENT_EXAMPLES]), None))
+    return spark.createDataFrame(rows, "list_name string, independent boolean, symbols_in_dataset long, agree long, needs_review long, disagree long, disagree_examples string, error string")
 
 
 def suffix_false_positives(mapping: DataFrame) -> DataFrame:

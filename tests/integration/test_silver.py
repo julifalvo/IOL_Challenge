@@ -216,6 +216,26 @@ def test_mapping_then_silver_is_stable_and_detects_a_missing_symbol(spark, schem
     aapl = spark.table(t["trades"]).where("symbol = 'AAPL'").collect()
     assert aapl and all("DQ030_INSTRUMENT_UNMAPPED" in r.quality_flags for r in aapl)
 
+    instruments.run_instruments(spark, t["trades"], t["instrument_mapping"])
+    _run(spark, t, "p5")
+    assert all("DQ030_INSTRUMENT_UNMAPPED" not in r.quality_flags for r in spark.table(t["trades"]).where("symbol = 'AAPL'").collect())
+    assert spark.table(t["quality_events"]).where("rule_code = 'DQ030_INSTRUMENT_UNMAPPED' AND is_active").count() == 0
+
+
+def test_enrichment_survives_rerunning_the_mapping(spark, schema, trades_small_csv):
+    t = _tables(schema)
+    _load(spark, t, trades_small_csv)
+    _run(spark, t, "p1")
+    enrichment = f"{schema}.instrument_enrichment"
+    spark.createDataFrame([("AAPL", "CEDEAR", "Apple Inc.", "TECNOLOGIA", "AAPL")], "symbol string, asset_type string, issuer string, sector string, underlying_ticker_foreign string").write.format("delta").saveAsTable(enrichment)
+
+    instruments.run_instruments(spark, t["trades"], t["instrument_mapping"], enrichment_table=enrichment)
+    again = instruments.run_instruments(spark, t["trades"], t["instrument_mapping"], enrichment_table=enrichment)
+
+    assert again["rows_updated"] == again["rows_inserted"] == 0  # estable: no deshace a la IA
+    row = spark.table(t["instrument_mapping"]).where("symbol = 'AAPL'").first()
+    assert row.issuer == "Apple Inc." and row.underlying_ticker_foreign == "AAPL"
+
 
 def test_rows_without_id_go_through_and_rerun_changes_nothing(spark, schema, tmp_path, trades_small_csv):
     t = _tables(schema)

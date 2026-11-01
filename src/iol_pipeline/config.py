@@ -156,6 +156,20 @@ PROVIDER_RULES = [
 ]
 ASSET_TYPES_PER_100_NOMINAL = ("BONO_SOBERANO", "BONO_SUBSOBERANO", "LETRA_LECAP_BONCAP", "ON")
 PER_100_NOMINAL_FACTOR = 0.01  # valor inicial; la etapa 05 lo valida por símbolo
+ASSET_TYPES = ("CEDEAR", "ACCION_LOCAL", "BONO_SOBERANO", "BONO_SUBSOBERANO", "LETRA_LECAP_BONCAP", "ON", "OPCION", "WARRANT", "OTRO")
+SETTLEMENT_VARIANTS = ("ARS", "USD_MEP", "USD_CCL", "USD_OTHER", "UNKNOWN")
+MAPPING_STATUSES = ("UNVERIFIED", "MAPPED", "UNMAPPED", "UNSUPPORTED")
+VARIANT_FX_RANGE = (1000.0, 2000.0)  # [SUPUESTO] para el período: el MEP implícito medido da ≈1.447 (ADR-004)
+DATA912_LIVE_URL = "https://data912.com/live/{name}"
+DATA912_LIST_TYPES = {  # lista de data912 -> tipos de activo que le corresponden, para validar la clasificación
+    "arg_cedears": ("CEDEAR",),
+    "arg_bonds": ("BONO_SOBERANO", "BONO_SUBSOBERANO"),
+    "arg_notes": ("LETRA_LECAP_BONCAP", "BONO_SOBERANO"),
+    "arg_corp": ("ON",),
+    "arg_stocks": ("ACCION_LOCAL",),
+}
+DATA912_NOT_INDEPENDENT_LISTS = ("arg_stocks",)  # es la misma lista que usa la regla de acciones
+DISAGREEMENT_EXAMPLES = 10
 BYMA_SYMBOL_SUFFIX = " 24HS"
 YAHOO_SYMBOL_SUFFIX = ".BA"
 
