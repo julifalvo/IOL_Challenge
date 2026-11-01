@@ -29,6 +29,7 @@ bronze_table = io.table_name("bronze", "trades_raw", catalog=CATALOG)
 silver_table = io.table_name("silver", "trades", catalog=CATALOG)
 baselines_table = io.table_name("ops", "quality_baselines", catalog=CATALOG)
 events_table = io.table_name("ops", "quality_events", catalog=CATALOG)
+mapping_table = io.table_name("ops", "instrument_mapping", catalog=CATALOG)  # si todavía no existe, DQ030 y DQ033 no aplican
 
 # COMMAND ----------
 
@@ -38,11 +39,11 @@ events_table = io.table_name("ops", "quality_events", catalog=CATALOG)
 
 # COMMAND ----------
 
-first = silver.run_silver(spark, bronze_table, silver_table, baselines_table, events_table, RUN_ID)
+first = silver.run_silver(spark, bronze_table, silver_table, baselines_table, events_table, RUN_ID, mapping_table)
 print("1ra corrida:", first)
 second = None
 if dbutils.widgets.get("demo_rerun") == "true":
-    second = silver.run_silver(spark, bronze_table, silver_table, baselines_table, events_table, RUN_ID)
+    second = silver.run_silver(spark, bronze_table, silver_table, baselines_table, events_table, RUN_ID, mapping_table)
     print("2da corrida:", second)
 
 # COMMAND ----------
