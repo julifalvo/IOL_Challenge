@@ -51,8 +51,8 @@ erDiagram
 | side | STRING | `BUY`/`SELL` |
 | client_id, symbol, description_raw, currency_code, channel_code | STRING | normalizados (trim, mayúsculas donde aplica) |
 | qty | DECIMAL(20,0) | null si no es un número entero (DQ005): redondear cambiaría el dato |
-| price | DECIMAL(24,8) | |
-| gross_amount | DECIMAL(38,8) | qty × price, moneda = currency_code (escala por 1 VN, ver ADR-005). Null si falta qty o price, o si desborda |
+| price | DECIMAL(24,8) | null si tiene más de 8 decimales (DQ005): redondear cambiaría el dato |
+| gross_amount | DECIMAL(38,8) | qty × price, moneda = currency_code (escala por 1 VN, ver ADR-005). Null si falta qty o price, o si price supera 9 dígitos enteros, para no perder decimales en el producto (DQ005) |
 | asset_type_rule | STRING | tipo de activo por reglas determinísticas (spec 04), sin IA; para los grupos de DQ020 y DQ022 |
 | maturity_date | DATE | vencimiento leído de la descripción, si lo tiene; para DQ032 |
 | quality_flags | ARRAY<STRING> | códigos de `docs/quality_rules.md` |
@@ -131,8 +131,8 @@ Fila de versión inicial: `valid_from` = fecha de primera operación del cliente
 |---|---|---|
 | `pipeline_runs` | run × etapa | pipeline_run_id, stage, started_at, ended_at, status, rows_in, rows_out, error |
 | `ingestion_runs` | run de ingesta (crece una fila por corrida) | ingestion_run_id, pipeline_run_id, source_file, source_file_hash, rows_read, rows_inserted, rows_already_present, rows_conflict, rows_duplicate_in_file, duplicate_row_numbers (ARRAY<BIGINT>), status, error, started_at, ended_at |
-| `quality_events` | operación × versión × regla, severidad WARNING o mayor | event_id (determinista), pipeline_run_id, trade_id, record_hash, rule_code, severity, details_json, rules_version |
-| `quality_baselines` | versión de reglas × regla × grupo | rules_version, rule_code, group_key, median_value, mad_value, limit_value, n |
+| `quality_events` | operación × versión × regla, severidad WARNING o mayor | event_id (determinista), pipeline_run_id, trade_id, record_hash, rule_code, severity, details_json, rules_version, is_active (false si la marca ya no está en Silver: no se borra) |
+| `quality_baselines` | versión de reglas × regla × grupo | rules_version, rule_code, group_key (DQ021: símbolo\|moneda; DQ020: tipo\|moneda; DQ022: tipo), median_value, mad_value, limit_value, n |
 | `pipeline_metrics` | run × métrica | pipeline_run_id, stage, metric_name, observed_value, threshold, comparator, status, details |
 | `gold_status` | run | pipeline_run_id, status (GREEN/YELLOW/RED), failed_checks, warnings, decided_at |
 | `quote_requests` | request | fetch_run_id, provider, provider_symbol, from, to, http_status, attempts, rows_returned, error, requested_at |

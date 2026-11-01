@@ -16,7 +16,7 @@ Umbrales parametrizados en `src/iol_pipeline/config.py` (`QUALITY_PARAMS`), vers
 | DQ002_REQUIRED_NULL | CRITICAL | Nulo/vacío en cualquier campo | Marcar | Sin ID/fecha/símbolo no hay trazabilidad | 0 |
 | DQ003_TS_UNPARSEABLE | CRITICAL | `fecha` no parsea ISO-8601 | Marcar | | 0 |
 | DQ004_ID_CONFLICT | CRITICAL | Mismo `id_transaccion` con distinto `record_hash` | Conservar ambas versiones en Bronze, marcar en Silver, evento | Doble conteo o pérdida silenciosa = riesgo regulatorio | 0 |
-| DQ005_NUMERIC_UNPARSEABLE | CRITICAL | cantidad/precio no numéricos | Marcar | | 0 |
+| DQ005_NUMERIC_UNPARSEABLE | CRITICAL | cantidad/precio no numéricos o no representables sin cambiar el dato: cantidad con decimales, precio con más de 8, importe que no entra | Marcar; el valor queda en null | Redondear cambiaría el dato sin aviso | 0 |
 | DQ006_NON_POSITIVE | ERROR | qty ≤ 0 o price ≤ 0 | Marcar | Una operación con cantidad o precio ≤0 no existe en BYMA | 0 |
 | DQ007_DOMAIN_INVALID | ERROR | `tipoTran`∉{Compra,Venta}, `moneda`∉{ARS,USD}, `origen`∉ catálogo | Marcar; canal desconocido → `UNKNOWN` | | 0 |
 | DQ008_MALFORMED_ROW | CRITICAL | Línea con más campos que el header (`extra_fields` no nulo) | Conservar la fila en Bronze; marcar en Silver | No se sabe si los valores están corridos: el precio podría estar en otra columna | 0 |
@@ -32,6 +32,17 @@ Umbrales parametrizados en `src/iol_pipeline/config.py` (`QUALITY_PARAMS`), vers
 | DQ031_SYMBOL_MULTI_DESC | INFO | Símbolo con >1 descripción | Elegir `description_canonical` (la más frecuente) | AZN, IRS2W, X15Y6 | 3 símbolos, 63 filas |
 | DQ032_AFTER_MATURITY | ERROR | effective_trade_date > maturity_date | Marcar | No se puede operar un título vencido | 0 |
 | DQ033_CURRENCY_VARIANT_MISMATCH | ERROR | settlement_variant USD con moneda ARS o viceversa | Marcar | Detecta mapeos erróneos tipo YPFD | se implementa en la etapa 04 |
+
+## Cómo se calculan las estadísticas de DQ020, DQ021 y DQ022
+
+- **Población:** filas interpretables: todos los campos presentes, fecha y números válidos, moneda dentro del dominio, cantidad y precio positivos, sin línea mal formada y sin conflicto de ID.
+- **Grupos:** DQ020 por (tipo de activo, moneda); DQ021 por (símbolo, moneda); DQ022 por tipo de activo. Ningún grupo mezcla monedas para calcular importes o precios.
+- **Se calculan sobre todo el período** y se guardan en `iol_ops.quality_baselines`. Por eso un archivo nuevo puede cambiar marcas de filas anteriores: Silver las actualiza y los eventos que ya no corresponden quedan con `is_active = false`. Sirven para detectar anomalías, no para valorar operaciones, así que esto no es look-ahead de precios.
+- **`MAD = 0`:** DQ020 no marca, porque sin dispersión el z robusto no está definido.
+- **Límites medidos** (Spark local, CSV completo, 2026-11-01):
+  - DQ020 es bilateral: 367 importes por el lado alto y 70 por el bajo.
+  - DQ021 casi no puede detectar nada con pocas filas: 357 de 1.445 símbolos tienen 2 filas o menos.
+  - Los grupos por tipo usan la clasificación por reglas: 19.241 operaciones de 178 símbolos, los más operados acciones locales, quedan juntas en `NEEDS_REVIEW` hasta la etapa 04.
 
 ## Reglas del enriquecimiento (no cambian `quality_status` de Silver, viven en `fact_trade_market.match_method`)
 
