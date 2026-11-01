@@ -126,7 +126,7 @@ Fila de versión inicial: `valid_from` = fecha de primera operación del cliente
 | Tabla | Granularidad | Columnas clave |
 |---|---|---|
 | `pipeline_runs` | run × etapa | pipeline_run_id, stage, started_at, ended_at, status, rows_in, rows_out, error |
-| `ingestion_runs` | run de ingesta | ingestion_run_id, source_file, source_file_hash, rows_read, rows_inserted, rows_already_present, rows_conflict, rows_duplicate_in_file, status |
+| `ingestion_runs` | run de ingesta (crece una fila por corrida) | ingestion_run_id, pipeline_run_id, source_file, source_file_hash, rows_read, rows_inserted, rows_already_present, rows_conflict, rows_duplicate_in_file, status, error, started_at, ended_at |
 | `quality_events` | evento | event_id, pipeline_run_id, trade_id, rule_code, severity, details_json |
 | `pipeline_metrics` | run × métrica | pipeline_run_id, stage, metric_name, observed_value, threshold, comparator, status, details |
 | `gold_status` | run | pipeline_run_id, status (GREEN/YELLOW/RED), failed_checks, warnings, decided_at |

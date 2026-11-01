@@ -9,7 +9,10 @@ La trazabilidad es requisito de negocio. Reprocesar el mismo archivo no puede du
 ## Decisión
 - Bronze guarda columnas originales **como texto** + linaje (`record_hash`, `source_file_hash`, `source_row_number`, `ingestion_run_id`).
 - `MERGE ... WHEN NOT MATCHED THEN INSERT` con clave `(id_transaccion, record_hash)`. Nunca UPDATE en Bronze.
-- Conflictos (mismo ID, distinto hash) quedan ambos en Bronze y se marcan `DQ004` en Silver.
+- Conflictos (mismo ID, distinto hash) quedan ambos en Bronze y se marcan `DQ004` en Silver. Un ID vacío no es un conflicto: dos filas sin ID no son versiones de la misma operación, y las marca `DQ002`.
+- Se lee con el módulo `csv` de Python para numerar filas, porque `zipWithIndex` (RDD) no existe en serverless y Spark no garantiza el orden. Una línea con más campos que el header hace fallar el archivo completo (`FAILED`): saltearla perdería la fila sin aviso. Un campo faltante queda vacío y lo marca Silver.
+- **No se usa pandas** [MEDIDO, pandas 3.1]: si la primera fila trae campos de más, `read_csv` usa las primeras columnas como índice y corre todas las demás, sin error, y el esquema igual pasa. Con `index_col=False` trunca, también sin error.
+- Reejecutar deja `trades_raw` idéntica, linaje incluido: conserva la primera corrida. `ingestion_runs` crece una fila por corrida, a propósito, porque registra cada intento.
 - `iol_ops.ingestion_runs` cuadra `read = inserted + already_present + duplicate_in_file`. `conflict` es un subconjunto de `inserted`: las filas insertadas en la corrida cuyo ID ya tenía otra versión, en la tabla o antes en el mismo archivo.
 
 ## Alternativas
@@ -24,4 +27,4 @@ La trazabilidad es requisito de negocio. Reprocesar el mismo archivo no puede du
 Auto Loader / `COPY INTO` por archivo en landing; misma clave de MERGE; trazabilidad de fila por `_metadata.file_path + record_hash` (sin número de línea).
 
 ## Evidencia
-Notebook 02: dos corridas consecutivas → 100.000 / 0 insertadas. `[MEDIR]`
+[MEDIDO, Spark 4.0.5 local sobre el CSV completo, 2026-11-01] Dos corridas consecutivas: 100.000 insertadas y después 0 insertadas con 100.000 presentes. 100.000 pares (id, hash) distintos. El módulo `csv` y el lector de Spark leen las mismas filas, sin diferencias. Falta la corrida del notebook 02 en Free Edition: **no ejecutado**.
