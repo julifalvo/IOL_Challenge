@@ -4,7 +4,7 @@
 
 ## Diseño
 - Entrada: `iol_bronze.trades_raw` completa (o filtrada por `ingestion_run_id` en modo incremental).
-- Salida: `iol_silver.trades`, **1:1 con Bronze**. `MERGE` por `(trade_id, record_hash)` con `WHEN MATCHED AND s.rules_version != t.rules_version THEN UPDATE` → reaplicar reglas nuevas es idempotente y auditable.
+- Salida: `iol_silver.trades`, **1:1 con Bronze**. `MERGE` por `(trade_id, record_hash)`, que actualiza solo si cambian `quality_flags`, `quality_status` o `rules_version`: reaplicar es idempotente, y una versión nueva de una operación también marca `DQ004` en la fila que ya estaba.
 - Tipado con `try_cast` / `try_to_timestamp` (nunca excepción por fila).
 - Normalización: trim, `side` (Compra→BUY, Venta→SELL), `channel_code` (catálogo cerrado de 5 + UNKNOWN), `currency_code`.
 - Fechas: con `calendar.with_trade_dates` (ya implementada): `trade_ts_utc`, `trade_hour_utc`, `trade_date_utc`, `trade_ts_local` (`TIMESTAMP_NTZ`, con `convert_timezone`: `from_utc_timestamp` + `to_date` depende de la zona de la sesión), `trade_date_local`, `effective_trade_date` (ADR-003: sábado → viernes hábil previo; si viernes fue feriado, el hábil previo a ese; null fuera del calendario, `DQ014`).
@@ -26,13 +26,13 @@
 - Reaplicar con misma `rules_version` → 0 updates.
 
 ## Salida visible del notebook
-1. Tabla: regla, severidad, filas afectadas, % del total, ejemplo de `trade_id`.
+1. Tabla: regla, severidad, filas afectadas, % del total, y como ejemplo un prefijo de `record_hash`: trazable a Bronze sin publicar IDs.
 2. Distribución de `quality_status`.
 3. Reconciliación Bronze vs Silver.
 4. 3 ejemplos de `quality_events` con `details_json`.
 
 ## Criterios de aceptación
 - [ ] 100.000 filas en Silver, 0 CRITICAL.
-- [ ] Cada regla del catálogo implementada con test.
+- [ ] Cada regla del catálogo implementada con test, salvo `DQ030` y `DQ033`, que necesitan `instrument_mapping` y pasan al spec 04.
 - [ ] Columna "Observado" de `docs/quality_rules.md` completada con números del output.
 - [ ] Reejecución sin cambios en conteos ni hashes.

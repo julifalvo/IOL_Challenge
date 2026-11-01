@@ -21,6 +21,9 @@ Resultado → `iol_ops.instrument_mapping` → `iol_gold.dim_instrument` (SCD1, 
 - Una función por proveedor `to_provider_symbol(symbol, asset_type, settlement_variant)`; ejemplo yfinance: `AL30 → AL30.BA`, `AL30D → AL30D.BA`, `AAPL → AAPL.BA` (verificar cada uno en el spike de spec 05; lo que no se verifica queda `UNVERIFIED`).
 - `price_scale_factor` por (symbol, provider). El valor inicial sale de (provider, asset_type): bonos/letras cotizados por 100 VN en el proveedor → 0,01; acciones/CEDEARs → 1. **Se valida empíricamente por símbolo**, no se asume: `YPFD` y SPY tienen otra escala en BYMA y Yahoo (ADR-008). Sanity check de spec 05.
 
+## Reglas de calidad que dependen del mapeo
+`DQ030_INSTRUMENT_UNMAPPED` y `DQ033_CURRENCY_VARIANT_MISMATCH` se implementan acá, porque necesitan `instrument_mapping`. Silver ya corrió antes en el pipeline: definir en esta etapa cómo llegan esas marcas a `quality_flags`, subiendo `RULES_VERSION` si hace falta.
+
 ## Tests
 - `YPFD` ARS → ACCION_LOCAL (si descripción "YPF" y regla de acciones/override), `settlement_variant=ARS`.
 - `AL30D` USD con base `AL30` ARS → USD_MEP, `underlying_key=AL30`.

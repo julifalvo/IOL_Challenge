@@ -50,13 +50,16 @@ erDiagram
 | effective_trade_date | DATE | día hábil de mercado asignado (ADR-003). Null si la fecha no parsea o está fuera del calendario |
 | side | STRING | `BUY`/`SELL` |
 | client_id, symbol, description_raw, currency_code, channel_code | STRING | normalizados (trim, mayúsculas donde aplica) |
-| qty | DECIMAL(20,0) | |
+| qty | DECIMAL(20,0) | null si no es un número entero (DQ005): redondear cambiaría el dato |
 | price | DECIMAL(24,8) | |
-| gross_amount | DECIMAL(38,8) | qty × price, moneda = currency_code (escala por 1 VN, ver ADR-005) |
+| gross_amount | DECIMAL(38,8) | qty × price, moneda = currency_code (escala por 1 VN, ver ADR-005). Null si falta qty o price, o si desborda |
+| asset_type_rule | STRING | tipo de activo por reglas determinísticas (spec 04), sin IA; para los grupos de DQ020 y DQ022 |
+| maturity_date | DATE | vencimiento leído de la descripción, si lo tiene; para DQ032 |
 | quality_flags | ARRAY<STRING> | códigos de `docs/quality_rules.md` |
 | quality_status | STRING | `OK`/`WARNING`/`ERROR`/`CRITICAL` (máxima severidad) |
+| rules_version | STRING | versión de las reglas aplicadas |
 | record_hash, ingestion_run_id | STRING | linaje a Bronze |
-| silver_run_id, processed_at | | |
+| silver_run_id, processed_at | | corrida y fecha del último cambio de la fila; no cambian si se reejecuta sin cambios |
 
 ## Gold (`iol_gold`)
 
@@ -128,7 +131,8 @@ Fila de versión inicial: `valid_from` = fecha de primera operación del cliente
 |---|---|---|
 | `pipeline_runs` | run × etapa | pipeline_run_id, stage, started_at, ended_at, status, rows_in, rows_out, error |
 | `ingestion_runs` | run de ingesta (crece una fila por corrida) | ingestion_run_id, pipeline_run_id, source_file, source_file_hash, rows_read, rows_inserted, rows_already_present, rows_conflict, rows_duplicate_in_file, duplicate_row_numbers (ARRAY<BIGINT>), status, error, started_at, ended_at |
-| `quality_events` | evento | event_id, pipeline_run_id, trade_id, rule_code, severity, details_json |
+| `quality_events` | operación × versión × regla, severidad WARNING o mayor | event_id (determinista), pipeline_run_id, trade_id, record_hash, rule_code, severity, details_json, rules_version |
+| `quality_baselines` | versión de reglas × regla × grupo | rules_version, rule_code, group_key, median_value, mad_value, limit_value, n |
 | `pipeline_metrics` | run × métrica | pipeline_run_id, stage, metric_name, observed_value, threshold, comparator, status, details |
 | `gold_status` | run | pipeline_run_id, status (GREEN/YELLOW/RED), failed_checks, warnings, decided_at |
 | `quote_requests` | request | fetch_run_id, provider, provider_symbol, from, to, http_status, attempts, rows_returned, error, requested_at |

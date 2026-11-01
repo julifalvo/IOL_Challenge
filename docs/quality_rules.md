@@ -10,7 +10,7 @@ Severidad → `quality_status` (se toma la máxima):
 
 Umbrales parametrizados en `src/iol_pipeline/config.py` (`QUALITY_PARAMS`), versión `rules_v1`.
 
-| Código | Severidad | Regla | Acción | Contexto / argumento | Observado (profiling) |
+| Código | Severidad | Regla | Acción | Contexto / argumento | Observado (Spark local, CSV completo, 2026-11-01) |
 |---|---|---|---|---|---|
 | DQ001_SCHEMA_MISMATCH | CRITICAL | Columnas ≠ contrato `trades_v1` | Run `FAILED_SCHEMA`: no se escribe Bronze y el archivo queda en landing | Un cambio de esquema rompe todo lo de aguas abajo | 0 |
 | DQ002_REQUIRED_NULL | CRITICAL | Nulo/vacío en cualquier campo | Marcar | Sin ID/fecha/símbolo no hay trazabilidad | 0 |
@@ -23,15 +23,15 @@ Umbrales parametrizados en `src/iol_pipeline/config.py` (`QUALITY_PARAMS`), vers
 | DQ010_SATURDAY | WARNING | Fecha local = sábado | `effective_trade_date` = viernes previo hábil | Sin domingos ni Carnaval; lunes empieza ~10 UTC y sábado termina ~19 UTC → cola de la sesión del viernes [HIPÓTESIS, ADR-003] | 10.255 (local) / 12.498 (UTC) |
 | DQ011_SUNDAY | ERROR | Fecha local = domingo | Marcar | No hay mecanismo de mercado que lo explique | 0 |
 | DQ012_MARKET_HOLIDAY | ERROR | Fecha local = feriado bursátil (calendario en config) | Marcar | El dataset respeta feriados: un trade en feriado es anómalo | 0 |
-| DQ013_OUTSIDE_SESSION | INFO | Hora local fuera de 11:00–17:00 | Solo métrica (no evento por fila) | Hora casi uniforme en 24 h: el componente horario no es confiable; usar granularidad diaria [ADR-003] | mayoría |
+| DQ013_OUTSIDE_SESSION | INFO | Hora local fuera de 11:00–17:00 | Solo métrica (no evento por fila) | Hora casi uniforme en 24 h: el componente horario no es confiable; usar granularidad diaria [ADR-003] | 70.409 (70,4%) |
 | DQ014_OUTSIDE_CALENDAR | ERROR | Fecha local fuera del rango del calendario de feriados | `effective_trade_date` = null; marcar | Sin calendario no se puede asignar el día hábil. Un archivo nuevo con fechas fuera de rango obliga a ampliar `MARKET_HOLIDAYS` | 0 |
-| DQ020_EXTREME_AMOUNT | WARNING | \|z robusto\| > 3,5 sobre log(gross_amount) por (asset_type, currency) | Marcar | MAD es robusto a la cola; umbral de Iglewicz–Hoaglin; por tipo de activo porque un BONCAP y un CEDEAR no son comparables | medir |
+| DQ020_EXTREME_AMOUNT | WARNING | \|z robusto\| > 3,5 sobre log(gross_amount) por (asset_type, currency) | Marcar | MAD es robusto a la cola; umbral de Iglewicz–Hoaglin; por tipo de activo porque un BONCAP y un CEDEAR no son comparables | 437 (0,44%) |
 | DQ021_POSSIBLE_SCALE_ERROR | ERROR (WARNING en `OPCION`) | price / mediana del símbolo < 0,02 o > 50 | Marcar; excluir de métricas de importe y de comparación con mercado | Ratio ~1/100 sugiere unidad mal cargada (T30A7 a 0,0101 vs mediana del símbolo 1,08). Precios ≈1,00 o 0,01 en IOLnet sugieren valor por defecto. En opciones la prima varía legítimamente ×50, por eso ahí es WARNING | 13 filas (8 IOLnet, 5 opciones) |
-| DQ022_EXTREME_QTY | WARNING | qty > p99,9 del asset_type | Marcar | Cantidades grandes son normales en bonos (VN); por eso no se usa qty sola para outliers | medir |
-| DQ030_INSTRUMENT_UNMAPPED | WARNING | Símbolo sin fila en `instrument_mapping` | Marcar; `instrument_sk` = UNKNOWN | La operación existe aunque no sepamos clasificarla | medir |
-| DQ031_SYMBOL_MULTI_DESC | INFO | Símbolo con >1 descripción | Elegir `description_canonical` (la más frecuente) | AZN, IRS2W, X15Y6 | 3 símbolos |
+| DQ022_EXTREME_QTY | WARNING | qty > p99,9 del asset_type | Marcar | Cantidades grandes son normales en bonos (VN); por eso no se usa qty sola para outliers | 105 (0,11%) |
+| DQ030_INSTRUMENT_UNMAPPED | WARNING | Símbolo sin fila en `instrument_mapping` | Marcar; `instrument_sk` = UNKNOWN | La operación existe aunque no sepamos clasificarla | se implementa en la etapa 04 |
+| DQ031_SYMBOL_MULTI_DESC | INFO | Símbolo con >1 descripción | Elegir `description_canonical` (la más frecuente) | AZN, IRS2W, X15Y6 | 3 símbolos, 63 filas |
 | DQ032_AFTER_MATURITY | ERROR | effective_trade_date > maturity_date | Marcar | No se puede operar un título vencido | 0 |
-| DQ033_CURRENCY_VARIANT_MISMATCH | ERROR | settlement_variant USD con moneda ARS o viceversa | Marcar | Detecta mapeos erróneos tipo YPFD | medir |
+| DQ033_CURRENCY_VARIANT_MISMATCH | ERROR | settlement_variant USD con moneda ARS o viceversa | Marcar | Detecta mapeos erróneos tipo YPFD | se implementa en la etapa 04 |
 
 ## Reglas del enriquecimiento (no cambian `quality_status` de Silver, viven en `fact_trade_market.match_method`)
 
