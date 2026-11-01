@@ -1,6 +1,6 @@
 # ADR-008 — Fuente de cotizaciones y modo de adquisición
 
-- **Estado:** propuesto (spike medido desde local; falta correrlo desde Free Edition)
+- **Estado:** aceptado (spike medido desde local y desde Free Edition, 2026-11-01); a confirmar con la cobertura de la etapa 05
 - **Requisitos:** R-17, R-18, R-20
 
 ## Contexto
@@ -8,32 +8,31 @@
 - Free Edition restringe la salida a internet; no hay lista pública de dominios permitidos.
 
 ## Egress desde Free Edition (smoke test, 2026-11-01)
-`requests.get` a la raíz de cada dominio desde serverless (`smoke_run_id = 1cc453e0-…`). Criterio vigente: HTTP 403, 407 y 429 son `INCONCLUSO`, porque también los puede devolver un intermediario; otra respuesta HTTP es OK; error de conexión o timeout es FAIL.
+`requests.get` a la raíz de cada dominio desde serverless (`smoke_run_id = d96b79bc-…`). Criterio vigente: HTTP 403, 407 y 429 son `INCONCLUSO`, porque también los puede devolver un intermediario; otra respuesta HTTP es OK; error de conexión o timeout es FAIL.
 
 | Proveedor | URL probada | Respuesta [MEDIDO] |
 |---|---|---|
-| API IOL | `https://api.invertironline.com` | HTTP 200 |
-| BYMA Open Data | `https://open.bymadata.com.ar` | HTTP 200 |
-| data912 | `https://data912.com` | HTTP 200 |
-| Yahoo Finance | `https://query1.finance.yahoo.com` | HTTP 429 (Too Many Requests) |
+| API IOL | `https://api.invertironline.com` | HTTP 200, `Server: cloudflare` |
+| BYMA Open Data | `https://open.bymadata.com.ar` | HTTP 200, `Server: nginx` |
+| data912 | `https://data912.com` | HTTP 200, `Server: cloudflare` |
+| Yahoo Finance | `https://query1.finance.yahoo.com` | HTTP 429 (Too Many Requests), `Server: ATS`: `INCONCLUSO` |
 
 Qué prueba y qué no:
-- **Prueba:** IOL, BYMA y data912 respondieron HTTP 200, así que el modo `api` desde Databricks es viable a nivel red para esos tres.
-- **No prueba:** que los endpoints de datos devuelvan series para los símbolos del challenge. Solo se pidió la raíz, sin autenticación ni parámetros. Eso se mide en el spike.
-- **Yahoo:** inconcluso. El 429 indica rate limiting, probablemente por IP compartida de serverless [HIPÓTESIS], pero esta corrida no guardó quién respondió. Que se pueda usar desde Databricks sigue sin verificar.
-- **Esta corrida usó el criterio anterior** y registró el 429 como OK (9/9). `00_smoke_test` ahora guarda también el header `Server`; falta volver a correrlo.
-- Por ahora el fetcher local (`tools/quotes_fetcher`) deja de ser necesario por egress. Sigue como plan B por rate limiting o términos de uso.
+- **Prueba:** IOL, BYMA y data912 respondieron HTTP 200.
+- **No prueba:** que los endpoints de datos devuelvan series. Solo se pidió la raíz, sin autenticación ni parámetros. Eso lo mide el spike, abajo.
+- **Yahoo:** la raíz da 429, pero el endpoint de datos respondió desde serverless: 11 de 16 símbolos con filas [MEDIDO]. Que sea rate limiting por IP compartida es [HIPÓTESIS]. Que aguante muchos símbolos no está medido.
+- El fetcher local (`tools/quotes_fetcher`) deja de ser necesario por egress. Sigue como plan B por rate limiting o términos de uso.
 
 ## Spike (8 símbolos del spec 05 + 8 CEDEARs para medir sesgo; 2025-12-15..2026-03-13)
 
-Se obtiene con `python -m tools.quotes_fetcher.spike <csv>`. Desde Free Edition: `notebooks/00_quotes_spike.py`, **no ejecutado**. No se guardan datos crudos.
+Se obtiene con `python -m tools.quotes_fetcher.spike <csv>`, y desde Free Edition con `notebooks/00_quotes_spike.py`. Las 48 combinaciones de proveedor y símbolo dan las mismas filas y la misma mediana de cierre en los dos lados [MEDIDO, 2026-11-01]. No se guardan datos crudos.
 
-| Proveedor | Desde Free Edition | Desde local [MEDIDO, 2026-11-01] | Cobertura de los 8 | OHLC | Escala | Límites / términos | Notas |
+| Proveedor | Desde Free Edition [MEDIDO, 2026-11-01] | Desde local [MEDIDO, 2026-11-01] | Cobertura de los 8 del spec | OHLC | Escala | Límites / términos | Notas |
 |---|---|---|---|---|---|---|---|
-| API IOL (serie histórica) | dominio OK | HTTP 401 sin credenciales | **no ejecutado** | no ejecutado | no ejecutado | no evaluado | requiere credenciales personales; no se usan |
-| BYMA Open Data | dominio OK | OK | 8/8, 60 días cada uno | sí | ver hallazgos | no evaluado | sufijo ` 24HS`; sin él o con ` 48HS` no devuelve datos |
-| data912 | dominio OK | OK | 5/8; faltan AAPLD, T30J6 y YM34D | sí | ×100 en bonos, ×1 en el resto | sin términos publicados | proyecto personal, ver hallazgos |
-| Yahoo Finance (`.BA`) | inconcluso, HTTP 429 | OK | 3/8; solo AAPL, AAPLD e YPFD | sí | ver hallazgos | no evaluado | sin bonos ni letras |
+| API IOL (serie histórica) | dominio OK; datos no probados | HTTP 401 sin credenciales | **no ejecutado** | no ejecutado | no ejecutado | no evaluado | requiere credenciales personales; no se usan |
+| BYMA Open Data | OK | OK | 8/8, 60 días cada uno | sí | ver hallazgos | no evaluado | sufijo ` 24HS`; sin él o con ` 48HS` no devuelve datos |
+| data912 | OK | OK | 5/8; faltan AAPLD, T30J6 y YM34D | sí | ×100 en bonos, ×1 en el resto | sin términos publicados | proyecto personal, ver hallazgos |
+| Yahoo Finance (`.BA`) | OK en el endpoint de datos; la raíz da HTTP 429 | OK | 3/8; solo AAPL, AAPLD e YPFD | sí | ver hallazgos | no evaluado | sin bonos ni letras |
 
 **Mediana de la relación diaria: precio de operación del día / cierre del mismo día** [MEDIDO, 2026-11-01]. Lo esperable es ≈0,01 en bonos y letras cotizados por 100 VN, y ≈1 en el resto:
 
@@ -70,7 +69,7 @@ En un activo sin sesgo la relación diaria igual se dispersa: p10 y p90 quedan e
 
 **Límite del spike:** son 16 de 1.445 símbolos. La cobertura y la escala del resto se miden en la etapa 05.
 
-## Decisión (aceptada el 2026-11-01; a confirmar con la corrida desde Free Edition y la cobertura de la etapa 05)
+## Decisión (aceptada el 2026-11-01; a confirmar con la cobertura de la etapa 05)
 | `asset_type` | Primario | Fallback | Por qué |
 |---|---|---|---|
 | Bonos soberanos | data912 | ninguno | BYMA los da ajustados; Yahoo no los tiene |
@@ -84,7 +83,7 @@ En un activo sin sesgo la relación diaria igual se dispersa: p10 y p90 quedan e
 
 **API de IOL:** no evaluada. Requiere credenciales personales y se decidió no usarlas en este proyecto (2026-11-01). Podría ser una mejor opción si da los bonos sin ajustar; queda como mejora futura.
 
-- Modo: `api` desde Databricks si hay egress; si no, `tools/quotes_fetcher` local → Volume → `quotes_raw` con `FileReplayProvider`. Mismo contrato y misma tabla `quote_requests` en ambos modos.
+- Modo: `api` desde Databricks: los 3 proveedores devuelven datos desde serverless [MEDIDO, 16 símbolos]. Si aparecen límites con los 1.445 símbolos, `tools/quotes_fetcher` local → Volume → `quotes_raw` con `FileReplayProvider`. Mismo contrato y misma tabla `quote_requests` en ambos modos.
 
 ## Criterios de elección
 1. Cobertura de variantes D/C y de soberanos (mayor parte de AL30 = 13.448 operaciones).

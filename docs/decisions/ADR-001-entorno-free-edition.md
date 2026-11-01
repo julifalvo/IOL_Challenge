@@ -30,23 +30,23 @@ No se envió consulta a IOL (decisión del 2026-11-01). Community Edition ya no 
 
 ## Resultado del smoke test
 - **Cómo se obtiene:** corriendo `notebooks/00_setup.py` y `notebooks/00_smoke_test.py`. El detalle queda en `iol_ops.smoke_test_results`, filtrado por `smoke_run_id`.
-- **Estado:** ejecutado el 2026-11-01. `00_setup` sin errores; `00_smoke_test` con 9/9 chequeos OK, `smoke_run_id = 1cc453e0-7d65-4a74-b2c2-4387cc92ec8d`.
+- **Estado:** ejecutado el 2026-11-01, en dos corridas. La vigente, con los notebooks corregidos: `00_setup` con `status: SUCCESS`; `00_smoke_test` con 10 de 11 chequeos OK, 1 inconcluso y ninguno fallido, `smoke_run_id = d96b79bc-649b-483d-b9ca-aa87e463b212`. La primera (`1cc453e0-…`, 9/9) contaba el 429 de Yahoo como OK.
 
 | Prueba | Resultado | Fecha |
 |---|---|---|
 | Crear schema + volume | Schemas: OK [MEDIDO], `SHOW SCHEMAS` de `00_setup` lista `iol_bronze`, `iol_gold`, `iol_ops`, `iol_silver`. Volume: OK [MEDIDO], `SHOW VOLUMES` lista `iol_bronze.landing`. CSV en `landing/trades/`: OK [MEDIDO], `data-set-challenge-5-.csv` de 12.242.003 bytes (mismo tamaño que el del profiling local), header = contrato `trades_v1` | 2026-11-01 |
 | Git folder + import de `src/` | OK [MEDIDO]: la celda que muestra `SHOW SCHEMAS` llama antes a `io.ensure_schemas`, importado desde `src/` | 2026-11-01 |
 | `dbutils.notebook.run` | OK [MEDIDO]: el hijo devolvió `{"status": "SUCCESS", "echo": "<smoke_run_id>"}` | 2026-11-01 |
-| Egress a proveedores | Los 4 dominios responden; Yahoo con HTTP 429. Detalle en ADR-008 | 2026-11-01 |
+| Egress a proveedores | IOL, BYMA y data912 con HTTP 200; la raíz de Yahoo con HTTP 429 (`INCONCLUSO`). Los endpoints de datos de BYMA, data912 y Yahoo devuelven series. Detalle en ADR-008 | 2026-11-01 |
 | `ai_query` | OK [MEDIDO] con `databricks-meta-llama-3-3-70b-instruct`. Detalle en ADR-011 | 2026-11-01 |
-| Liquid clustering | OK [MEDIDO]: `CREATE TABLE ... CLUSTER BY (d)` y `DESCRIBE DETAIL` devuelve `clusteringColumns=['d']` | 2026-11-01 |
-| `write_delta_merge` idempotente en UC | OK [MEDIDO]: 1ra corrida 8 insertadas; 2da corrida 0 insertadas, 8 ya presentes | 2026-11-01 |
+| Liquid clustering | OK [MEDIDO]: con `CREATE TABLE ... CLUSTER BY (d)` y con `ALTER TABLE ... CLUSTER BY (d)`, `DESCRIBE DETAIL` devuelve `clusteringColumns=['d']` | 2026-11-01 |
+| Región y catálogo por defecto | `aws:us-east-2`, catálogo `workspace` [MEDIDO] | 2026-11-01 |
+| `write_delta_merge` idempotente en UC | OK [MEDIDO]: 1ra corrida 10 insertadas; 2da corrida 0 insertadas, 10 ya presentes | 2026-11-01 |
 
 ## Qué falta medir en Free Edition
-El smoke test no cubre todo lo que pide el challenge. Estos puntos siguen **no ejecutados**:
-- Que los endpoints de datos de cotizaciones devuelvan series para los símbolos del challenge (spike de ADR-008). El smoke solo pidió la raíz de cada dominio.
+Siguen **no ejecutados**:
 - Que el benchmark 100x entre en los límites de cómputo de Free Edition (ADR-010).
-- `ALTER TABLE ... CLUSTER BY` sobre una tabla existente. El smoke probó `CREATE TABLE ... CLUSTER BY`.
+- La descarga de cotizaciones para los 1.445 símbolos: el spike probó 16 (ADR-008).
 
 ## Cuándo revisar
 Si IOL indica otro entorno, o si Free Edition cambia sus límites durante el challenge.
