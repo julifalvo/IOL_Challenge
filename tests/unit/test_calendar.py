@@ -39,6 +39,18 @@ def test_local_saturday_gets_effective_friday(spark):
     assert row.effective_trade_date == date(2026, 1, 9)
 
 
+def test_date_outside_the_calendar_has_no_effective_date(spark):
+    after_range = _row(spark, "2026-04-04T15:00:00.000Z")  # sábado después de CALENDAR_TO
+    assert after_range.trade_date_local == date(2026, 4, 4)
+    assert after_range.effective_trade_date is None
+    assert _row(spark, "2025-11-28T15:00:00.000Z").effective_trade_date is None  # viernes antes de CALENDAR_FROM
+
+
+def test_calendar_limits_are_inside_the_calendar(spark):
+    assert _row(spark, "2026-03-31T15:00:00.000Z").effective_trade_date == date(2026, 3, 31)
+    assert _row(spark, "2025-12-01T15:00:00.000Z").effective_trade_date == date(2025, 12, 1)
+
+
 def test_unparseable_date_is_null_and_does_not_raise(spark):
     row = _row(spark, "2026-02-30T15:00:00.000Z")
     assert row.trade_ts_utc is None and row.trade_date_local is None and row.effective_trade_date is None

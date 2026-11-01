@@ -15,6 +15,7 @@ Los registros de sábado son la cola de la jornada operativa del viernes (regist
 - No descartar ni corregir el timestamp original.
 - `effective_trade_date` = fecha local si es día hábil; si es sábado → último día hábil previo. Flag `DQ010_SATURDAY` (WARNING, entra a métricas).
 - Domingo o feriado → ERROR (`DQ011`, `DQ012`), no se reasigna: no hay mecanismo que lo explique.
+- Fecha fuera del rango de `MARKET_HOLIDAYS` → `effective_trade_date` queda en null y ERROR (`DQ014`): sin calendario no se sabe si el día previo fue hábil. Se amplía el calendario, no se adivina.
 - Toda la analítica y el matching de cotizaciones usan `effective_trade_date`.
 - El análisis intradiario queda fuera de alcance; `DQ013_OUTSIDE_SESSION` solo como métrica INFO.
 

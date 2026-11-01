@@ -40,10 +40,12 @@ def with_trade_dates(df: DataFrame, ts_col: str = "fecha") -> DataFrame:
     """Agrega trade_ts_utc, trade_hour_utc, trade_date_utc, trade_ts_local, trade_date_local y effective_trade_date.
 
     Una fecha que no parsea queda en null en todas: se marca aguas abajo, nunca lanza excepción.
+    Una fecha fuera del calendario deja `effective_trade_date` en null (ADR-003).
     """
     ts = F.try_to_timestamp(F.col(ts_col), F.lit(config.TRADES_TS_FORMAT))
     utc = _wall_clock(ts, "UTC")
     local = _wall_clock(ts, config.TZ_MARKET)
+    in_calendar = F.to_date(local).between(F.lit(config.CALENDAR_FROM), F.lit(config.CALENDAR_TO))
     return (df
             .withColumn("trade_ts_utc", ts)
             .withColumn("trade_hour_utc", F.hour(utc))
@@ -51,5 +53,5 @@ def with_trade_dates(df: DataFrame, ts_col: str = "fecha") -> DataFrame:
             .withColumn("trade_ts_local", local)
             .withColumn("trade_date_local", F.to_date(local))
             .withColumn("effective_trade_date",
-                        F.coalesce(F.try_element_at(_saturday_to_effective(), F.col("trade_date_local")),
-                                   F.col("trade_date_local"))))
+                        F.when(in_calendar, F.coalesce(F.try_element_at(_saturday_to_effective(), F.col("trade_date_local")),
+                                                       F.col("trade_date_local")))))
