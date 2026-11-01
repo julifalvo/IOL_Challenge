@@ -10,7 +10,7 @@ Documento técnico para el equipo que mantiene el pipeline. Las decisiones y sus
 | Bronze, Silver, instrumentos, cotizaciones, Gold, gates, EDA, IA, orquestador | Diseñado en `docs/specs/`, **no implementado** |
 | Benchmark y comparativa de cómputo (§6) | **No ejecutado** |
 
-Los números de este documento salen del notebook `01_data_profiling`, corrido con Spark local sobre el CSV completo [MEDIDO, 2026-11-01]. La corrida en Free Edition está **pendiente**.
+Los números de este documento salen del notebook `01_data_profiling`, corrido en Free Edition sobre el CSV completo [MEDIDO, 2026-11-01; `notebooks_executed/01_data_profiling.ipynb`].
 
 ## 1. Contexto y objetivos no funcionales
 

@@ -3,7 +3,7 @@
 - **Estado:** propuesto
 - **Requisitos:** R-09, R-19
 
-## Contexto (profiling local, recalcular en notebook 01)
+## Contexto [MEDIDO en el notebook 01, Free Edition, 2026-11-01]
 - 10.255 operaciones caen en sábado en hora local (12.498 en UTC). 0 en domingo.
 - 0 operaciones el 16/02 y 17/02 (Carnaval): **el dataset respeta feriados**.
 - Por hora UTC: los lunes no hay operaciones antes de ~10 UTC; los sábados se cortan ~19 UTC. La hora está repartida casi uniformemente en 24 h, incompatible con la rueda de BYMA (11–17 hs).

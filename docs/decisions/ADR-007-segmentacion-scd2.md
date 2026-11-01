@@ -36,7 +36,7 @@ Vigencia: la versión del cierre del mes M rige desde el día siguiente (`valid_
 | Snapshot diario | Correcto en producción; a 3 meses el mensual es suficiente para demostrar y más legible |
 | Segmentar por importe | Mezcla monedas y escalas de VN; requiere FX |
 
-## Viabilidad [MEDIDO, Spark local sobre el CSV completo, 2026-11-01; corrida en Free Edition pendiente]
+## Viabilidad [MEDIDO en Free Edition, 2026-11-01; Spark local da lo mismo]
 Celda 10 del notebook 01. Una versión nueva = cambia `activity_segment` o `preferred_channel`. Los otros 2 atributos no entran, así que es un piso.
 
 | Versiones | Clientes |

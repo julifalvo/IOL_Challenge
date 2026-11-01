@@ -66,7 +66,7 @@ import sys, os
 sys.path.insert(0, os.path.abspath("../src"))
 ```
 
-## Hechos del dataset ya verificados (profiling local, recalcular en notebook 01)
+## Hechos del dataset ya verificados (notebook 01 en Free Edition, 2026-11-01)
 
 - 100.000 filas, 0 nulos, 0 `id_transaccion` duplicados, 57.655 clientes, 1.445 símbolos.
 - `fecha` ISO-8601 UTC (`...Z`). 5 canales: App Mobile 66.438, Sitio Web Desktop 28.952, Sitio Web Responsive 2.651, API 1.688, IOLnet 271.
