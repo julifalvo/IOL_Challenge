@@ -4,7 +4,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 
 | Spec | Estado | Tests locales | Databricks | Pendientes / notas |
 |---|---|---|---|---|
-| 00 Entorno | hecho en Databricks; falta exportar outputs | 32/32 passed (2026-10-31) | `00_setup` OK; `00_smoke_test` 9/9 OK (2026-11-01) | ⏳ exportar `.ipynb` con outputs a `notebooks_executed/`; `/review-stage 00` |
+| 00 Entorno | hecho (local + Databricks) | 32/32 passed (2026-10-31) | `00_setup` OK; `00_smoke_test` 9/9 OK (2026-11-01) | `/review-stage 00` pendiente; outputs en `notebooks_executed/00_setup.ipynb` y `00_smoke_test.ipynb` |
 | 01 Profiling + arquitectura | pendiente | — | — | |
 | 02 Bronze | pendiente | — | — | |
 | 03 Silver + calidad | pendiente | — | — | |
