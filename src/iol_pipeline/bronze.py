@@ -67,7 +67,7 @@ def add_lineage(spark: SparkSession, rows: list[tuple[str | None, ...]], source_
     schema = ", ".join(f"{c} string" for c in config.TRADES_CONTRACT) + ", extra_fields string, source_row_number long"
     separator = config.RECORD_HASH_SEPARATOR
     return (spark.createDataFrame(data, schema)
-            .withColumn("record_hash", F.sha2(F.concat_ws(separator, *config.TRADES_CONTRACT, "extra_fields"), 256))
+            .withColumn("record_hash", F.sha2(F.concat_ws(separator, *config.TRADES_CONTRACT, "extra_fields"), config.RECORD_HASH_BITS))
             .withColumn("source_file", F.lit(source_file))
             .withColumn("source_file_hash", F.lit(source_file_hash))
             .withColumn("ingestion_run_id", F.lit(ingestion_run_id))

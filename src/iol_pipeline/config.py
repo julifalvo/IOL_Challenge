@@ -23,6 +23,8 @@ def is_databricks() -> bool:
 # --- Versiones -----------------------------------------------------------------
 SCHEMA_VERSION = "trades_v1"
 RECORD_HASH_SEPARATOR = "\u001f"
+RECORD_HASH_BITS = 256
+BRONZE_DEMO_RUNS = 2  # corridas de 02_ingest_bronze con demo_rerun, para mostrar la idempotencia
 HASH_CHUNK_BYTES = 1024 * 1024
 RUN_ERROR_MAX_CHARS = 500
 TRADES_TS_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSX"

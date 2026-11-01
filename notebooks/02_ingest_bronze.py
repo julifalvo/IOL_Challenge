@@ -18,13 +18,14 @@ import sys
 import uuid
 
 sys.path.insert(0, os.path.abspath("../src"))
-from iol_pipeline import bronze, io
+from iol_pipeline import bronze, config, io
 
 RUN_ID = dbutils.widgets.get("pipeline_run_id") or str(uuid.uuid4())
 CATALOG = dbutils.widgets.get("catalog")
-RUNS = 2 if dbutils.widgets.get("demo_rerun") == "true" else 1
+RUNS = config.BRONZE_DEMO_RUNS if dbutils.widgets.get("demo_rerun") == "true" else 1
 print("pipeline_run_id:", RUN_ID)
 
+io.ensure_schemas(spark, catalog=CATALOG)
 trades_table = io.table_name("bronze", "trades_raw", catalog=CATALOG)
 runs_table = io.table_name("ops", "ingestion_runs", catalog=CATALOG)
 csv_files = bronze.list_csv_files(io.landing_path("trades", catalog=CATALOG))
@@ -50,7 +51,10 @@ for r in results:
 
 # COMMAND ----------
 
-display(spark.table(runs_table).orderBy("started_at"))
+if spark.catalog.tableExists(runs_table):
+    display(spark.table(runs_table).orderBy("started_at"))
+else:
+    print(f"{runs_table} no existe: no hubo archivos para ingerir.")
 
 # COMMAND ----------
 
@@ -59,11 +63,15 @@ display(spark.table(runs_table).orderBy("started_at"))
 
 # COMMAND ----------
 
-rows_out = spark.table(trades_table).count()
-print(f"{trades_table}: {rows_out:,} filas")
-detail = spark.sql(f"DESCRIBE DETAIL {trades_table}").first()
-print("format:", detail["format"], "· numFiles:", detail["numFiles"], "· sizeInBytes:", detail["sizeInBytes"])
-display(spark.table(trades_table).select("source_file", "source_file_hash", "schema_version", "ingestion_run_id").distinct())
+rows_out = 0
+if spark.catalog.tableExists(trades_table):
+    rows_out = spark.table(trades_table).count()
+    print(f"{trades_table}: {rows_out:,} filas")
+    detail = spark.sql(f"DESCRIBE DETAIL {trades_table}").first()
+    print("format:", detail["format"], "· numFiles:", detail["numFiles"], "· sizeInBytes:", detail["sizeInBytes"])
+    display(spark.table(trades_table).select("source_file", "source_file_hash", "schema_version", "ingestion_run_id").distinct())
+else:
+    print(f"{trades_table} no existe: ninguna corrida escribió filas. El motivo está en la tabla de corridas.")
 orphans = bronze.orphan_ingestion_runs(spark, trades_table, runs_table)
 print("Corridas de Bronze sin registro en ingestion_runs:", orphans or "ninguna")
 
