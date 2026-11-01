@@ -90,7 +90,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - Tests locales: 39 passed.
 - 2026-11-01 — **Pendientes abiertos de la etapa 00:**
   - Volver a correr `00_setup` y `00_smoke_test` en Free Edition y exportarlos. Los `.ipynb` actuales son de la versión anterior de los notebooks: **no ejecutado** con el código corregido. El de `00_setup` todavía muestra el email del usuario en un output, y va a seguir en el historial de git aunque se reemplace.
-  - Spike de cotizaciones de ADR-008: medido desde local el 2026-11-01. Falta `00_quotes_spike` desde Free Edition, y la API de IOL, que requiere cuenta.
+  - Spike de cotizaciones de ADR-008: medido desde local el 2026-11-01. Falta `00_quotes_spike` desde Free Edition. La API de IOL no se evalúa: requiere credenciales personales y se decidió no usarlas.
   - Hallazgos de severidad baja que siguen abiertos:
     - El fixture no tiene casos de DQ005, DQ031 ni `tipoTran`/`origen` inválidos. Se suman en la etapa 03.
     - `write_delta_merge` evalúa el origen 3 veces. Se revisa junto con el benchmark.

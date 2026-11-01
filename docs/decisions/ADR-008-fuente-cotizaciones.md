@@ -30,7 +30,7 @@ Se obtiene con `python -m tools.quotes_fetcher.spike <csv>`. Desde Free Edition:
 
 | Proveedor | Desde Free Edition | Desde local [MEDIDO, 2026-11-01] | Cobertura de los 8 | OHLC | Escala | Límites / términos | Notas |
 |---|---|---|---|---|---|---|---|
-| API IOL (serie histórica) | dominio OK | HTTP 401 sin credenciales | **no ejecutado** | no ejecutado | no ejecutado | no evaluado | requiere cuenta |
+| API IOL (serie histórica) | dominio OK | HTTP 401 sin credenciales | **no ejecutado** | no ejecutado | no ejecutado | no evaluado | requiere credenciales personales; no se usan |
 | BYMA Open Data | dominio OK | OK | 8/8, 60 días cada uno | sí | ver hallazgos | no evaluado | sufijo ` 24HS`; sin él o con ` 48HS` no devuelve datos |
 | data912 | dominio OK | OK | 5/8; faltan AAPLD, T30J6 y YM34D | sí | ×100 en bonos, ×1 en el resto | sin términos publicados | proyecto personal, ver hallazgos |
 | Yahoo Finance (`.BA`) | inconcluso, HTTP 429 | OK | 3/8; solo AAPL, AAPLD e YPFD | sí | ver hallazgos | no evaluado | sin bonos ni letras |
@@ -68,7 +68,7 @@ Se obtiene con `python -m tools.quotes_fetcher.spike <csv>`. Desde Free Edition:
 
 **Trade-off:** el criterio 3 pedía fuente oficial antes que agregador, y para bonos gana un agregador personal porque la serie oficial no sirve como precio de mercado sin desajustar. Si data912 deja de estar disponible, los bonos soberanos quedan sin cobertura y Gold pasa a YELLOW (G08, G09), no a RED.
 
-**API de IOL:** no evaluada, porque requiere cuenta. Sería una mejor opción si resuelve los bonos sin ajustar.
+**API de IOL:** no evaluada. Requiere credenciales personales y se decidió no usarlas en este proyecto (2026-11-01). Podría ser una mejor opción si da los bonos sin ajustar; queda como mejora futura.
 
 - Modo: `api` desde Databricks si hay egress; si no, `tools/quotes_fetcher` local → Volume → `quotes_raw` con `FileReplayProvider`. Mismo contrato y misma tabla `quote_requests` en ambos modos.
 
