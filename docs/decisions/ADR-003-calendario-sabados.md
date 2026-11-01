@@ -19,7 +19,8 @@ Los registros de sábado son la cola de la jornada operativa del viernes (regist
 - El análisis intradiario queda fuera de alcance; `DQ013_OUTSIDE_SESSION` solo como métrica INFO.
 
 ## Calendario de feriados bursátiles (`config.MARKET_HOLIDAYS`)
-- **Regla:** feriado bursátil = feriado nacional (inamovible o trasladable). Los "días no laborables" no cuentan.
+- **Regla** [SUPUESTO]: feriado bursátil = feriado nacional (inamovible o trasladable). Los "días no laborables" no cuentan. No se contrastó contra un calendario publicado por BYMA.
+- **Evidencia a favor** [MEDIDO, CSV completo, 2026-11-01]: entre 02/01 y 13/03, los únicos días hábiles sin operaciones son 16/02 y 17/02, los dos feriados de ese rango. Las otras 4 fechas caen fuera del rango de los trades: solo afectan a `dim_date` y a la imputación de cotizaciones.
 - **Rango:** el de `dim_date`, 2025-12-01..2026-03-31.
 - **Fuente oficial:** calendario de Jefatura de Gabinete, [argentina.gob.ar/jefatura/feriados-nacionales-2026](https://www.argentina.gob.ar/jefatura/feriados-nacionales-2026). Los datos salen de los archivos `holidays-2025-es.json` y `holidays-2026-es.json`, consultados el 2026-10-31.
 - **Resultado:** 08/12/2025, 25/12/2025, 01/01/2026, 16/02/2026, 17/02/2026 y 24/03/2026.

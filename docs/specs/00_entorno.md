@@ -10,7 +10,7 @@ Dejar el repo y el workspace listos para que cualquier etapa se pueda desarrolla
 2. `src/iol_pipeline/config.py`:
    - `CATALOG`, nombres de schemas, rutas de Volume.
    - `QUALITY_PARAMS` (umbrales de `docs/quality_rules.md`), `GATE_PARAMS` (de `docs/quality_gates.md`).
-   - `MARKET_CALENDAR`: feriados bursátiles ene–mar 2026 (al menos 1/1, 16/2, 17/2; verificar contra calendario BYMA y documentar la fuente).
+   - `MARKET_HOLIDAYS`: feriados bursátiles en el rango de `dim_date` (al menos 1/1, 16/2, 17/2). Fuente y supuesto documentados en ADR-003.
    - `SESSION_HOURS_LOCAL = ("11:00","17:00")`.
    - `MAX_QUOTE_AGE_BDAYS = 3`, `ABOVE_MARKET_TOLERANCE = 0.005` (ADR-009).
    - `RULES_VERSION = "rules_v1"`, `SEGMENT_RULE_VERSION = "seg_v1"`, `MAPPING_VERSION = "map_v1"`.
