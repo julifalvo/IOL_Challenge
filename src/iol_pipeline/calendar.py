@@ -30,6 +30,13 @@ def _wall_clock(ts: Column, tz: str) -> Column:
     return F.convert_timezone(None, F.lit(tz), ts.cast("timestamp_ntz"))
 
 
+def in_session(ts_local: str) -> Column:
+    """Hora local dentro de la rueda: incluye el inicio y excluye el cierre."""
+    start, end = config.SESSION_HOURS_LOCAL
+    local_time = F.date_format(ts_local, "HH:mm")
+    return (local_time >= start) & (local_time < end)
+
+
 def _saturday_to_effective() -> Column:
     days = (config.CALENDAR_TO - config.CALENDAR_FROM).days + 1
     saturdays = [d for d in (config.CALENDAR_FROM + timedelta(days=i) for i in range(days)) if d.weekday() == SATURDAY]

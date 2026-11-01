@@ -10,28 +10,14 @@ from datetime import timedelta
 from pyspark.sql import DataFrame, SparkSession, Window
 from pyspark.sql import functions as F
 
-from iol_pipeline import calendar, config
+from iol_pipeline import calendar, config, instruments
 
-OPTION_PATTERN = r"^[A-Z]{3,5}[CV]\d{3,6}[A-Z]{0,2}$"
 EXTREME_COLUMNS = ["simbolo_titulo", "origen", "asset_type_rule", "moneda", "cantidad", "precio", "amount"]
 
 
 def read_trades_csv(spark: SparkSession, path: str) -> DataFrame:
     """Todo como texto: el profiling no asume tipos."""
     return spark.read.option("header", True).option("inferSchema", False).csv(path)
-
-
-def preliminary_asset_type() -> F.Column:
-    """Clasificación preliminar, la misma de scripts/profile_local.py. La definitiva es del spec 04."""
-    desc = F.lower(F.col("descripcion_titulo"))
-    return (F.when(F.col("simbolo_titulo").rlike(OPTION_PATTERN) & (F.col("simbolo_titulo") == F.col("descripcion_titulo")), "OPCION")
-            .when(desc.startswith("cedear"), "CEDEAR")
-            .when(desc.rlike(r"lecap|boncap|\blt rep|letra"), "LETRA_LECAP_BONCAP")
-            .when(desc.rlike("warrant"), "WARRANT")
-            .when(desc.rlike(r"pcia|prov\.|provincia|ciudad"), "BONO_SUBSOBERANO")
-            .when(desc.rlike(r"\bon\b|oblig"), "ON")
-            .when(desc.rlike("bono|bonos|tesoro|tasa dual|bopreal"), "BONO_SOBERANO")
-            .otherwise("NEEDS_REVIEW"))
 
 
 def prepare(raw: DataFrame) -> DataFrame:
@@ -43,7 +29,7 @@ def prepare(raw: DataFrame) -> DataFrame:
             .withColumn("cantidad", F.col("cantidad").try_cast("double"))
             .withColumn("precio", F.col("precio").try_cast("double"))
             .withColumn("amount", F.col("cantidad") * F.col("precio"))
-            .withColumn("asset_type_rule", preliminary_asset_type()))
+            .withColumn("asset_type_rule", instruments.asset_type_by_rules(F.col("simbolo_titulo"), F.col("descripcion_titulo"))))
 
 
 # --- Celda 1 -------------------------------------------------------------------
@@ -107,10 +93,8 @@ def hour_bounds_by_weekday(trades: DataFrame) -> DataFrame:
 
 def share_in_session(trades: DataFrame) -> float:
     """Proporción de operaciones con hora local dentro de la rueda."""
-    start, end = config.SESSION_HOURS_LOCAL
-    local_time = F.date_format("trade_ts_local", "HH:mm")
     row = trades.where(F.col("trade_ts_local").isNotNull()).agg(
-        F.avg(((local_time >= start) & (local_time < end)).cast("int")).alias("share")).first()
+        F.avg(calendar.in_session("trade_ts_local").cast("int")).alias("share")).first()
     return row["share"]
 
 
