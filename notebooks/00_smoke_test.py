@@ -122,11 +122,18 @@ def to_df(rows):
                     F.to_timestamp("checked_at").alias("checked_at")))
 
 
-first = io.write_delta_merge(spark, to_df(results), target, keys)
-rerun = io.write_delta_merge(spark, to_df(results), target, keys)
-idempotent = first["rows_inserted"] == len(results) and rerun["rows_inserted"] == 0
-record("delta:write_delta_merge_idempotent", "OK" if idempotent else "FAIL", f"1ra corrida={first} · 2da corrida={rerun}")
-io.write_delta_merge(spark, to_df(results[-1:]), target, keys)
+try:
+    first = io.write_delta_merge(spark, to_df(results), target, keys)
+    rerun = io.write_delta_merge(spark, to_df(results), target, keys)
+    idempotent = first["rows_inserted"] == len(results) and rerun["rows_inserted"] == 0
+    record("delta:write_delta_merge_idempotent", "OK" if idempotent else "FAIL", f"1ra corrida={first} · 2da corrida={rerun}")
+except Exception as exc:
+    record("delta:write_delta_merge_idempotent", "FAIL", f"{type(exc).__name__}: {exc}")
+
+try:
+    io.write_delta_merge(spark, to_df(results[-1:]), target, keys)
+except Exception as exc:
+    record("delta:persist_results", "FAIL", f"{type(exc).__name__}: {exc}")
 
 # COMMAND ----------
 
@@ -135,8 +142,7 @@ io.write_delta_merge(spark, to_df(results[-1:]), target, keys)
 
 # COMMAND ----------
 
-summary = spark.table(target).where(F.col("smoke_run_id") == SMOKE_RUN_ID).orderBy("check")
-display(summary)
+display(to_df(results).orderBy("check"))  # desde memoria: se ve aunque el MERGE haya fallado
 failed = [r["check"] for r in results if r["status"] == "FAIL"]
 inconclusive = [r["check"] for r in results if r["status"] == "INCONCLUSO"]
 print(f"{len(results) - len(failed) - len(inconclusive)}/{len(results)} OK · "
