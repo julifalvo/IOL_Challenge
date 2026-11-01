@@ -7,7 +7,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 | 00 Entorno | hecho (local + Databricks) | 99/99 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 10/11 OK, 1 inconcluso (2026-11-01) | Review hecho. Outputs en `notebooks_executed/`. 2 bajas abiertas: fixture (etapa 03) y triple evaluación del MERGE (benchmark) |
 | 01 Profiling + arquitectura | parcial | 99/99 passed (2026-11-01) | `01_data_profiling` y `00_quotes_spike` OK (2026-11-01) | Review hecho. **Pendiente, por dependencia:** benchmark, §6 de `ARCHITECTURE.md` y ADR-010 necesitan Silver y Gold (día 5 de `PLAN.md`). 8 bajas abiertas (ver log) |
 | 02 Bronze | hecho (local + Databricks) | 132/132 passed en la última suite completa; 33/33 de Bronze después de las últimas correcciones (2026-11-01) | `02_ingest_bronze` OK (2026-11-01) | Review hecho. Outputs en `notebooks_executed/02_ingest_bronze.ipynb` |
-| 03 Silver + calidad | código listo | 197/197 passed (2026-11-01) | **no ejecutado** | Corrida local sobre el CSV completo OK. Falta `/review-stage 03` y correr `03_quality_silver` en Free Edition. `DQ030` y `DQ033` pasan a la etapa 04 |
+| 03 Silver + calidad | código listo | 207/207 passed (2026-11-01) | **no ejecutado** | Review hecho. Corrida local sobre el CSV completo OK. Falta correr `03_quality_silver` en Free Edition. `DQ030` y `DQ033` pasan a la etapa 04 |
 | 04 Instrumentos | pendiente | — | — | |
 | 05 Cotizaciones | pendiente | — | — | |
 | 06 Gold + SCD2 | pendiente | — | — | |
@@ -197,4 +197,13 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
     - ✅ Cada regla del catálogo implementada con test, salvo `DQ030` y `DQ033` (etapa 04).
     - ✅ Columna "Observado" de `quality_rules.md` completada, con números de la corrida local. Falta confirmarlos en Free Edition.
     - ⏳ Reejecución sin cambios en conteos ni hashes: medido en local, **no ejecutado** en Free Edition.
-  - La suite completa tarda 13 min 12 s. No se probó si bajan con otra configuración de Spark en los tests.
+- 2026-11-01 — **`/review-stage 03`:** listo con cambios menores, sin severidad alta. Corregidos los 5 de severidad media y las 7 bajas:
+  - El MERGE compara todas las columnas derivadas: un cambio de calendario no llegaba a las filas existentes [MEDIDO].
+  - `quality_events` tiene `is_active`: un evento cuya marca desaparece queda inactivo, no se borra. La reconciliación controla las dos direcciones.
+  - La versión de reglas se lee al correr, y `run_silver` falla si no hay estadísticas: antes `DQ021` pasaba de 4 a 0 sin aviso, con un test en verde [MEDIDO].
+  - Los ejemplos de eventos muestran hasta 3 por regla: antes eran 9 de `DQ010` [MEDIDO].
+  - `quality_rules.md` documenta población, grupos y límites de las estadísticas: el cálculo es sobre todo el período, y 357 de 1.445 símbolos tienen 2 filas o menos para `DQ021`.
+  - Precio con más de 8 decimales o importe que no entra: `DQ005`, sin redondear. El importe conserva 8 decimales.
+  - `DQ021` agrupa por símbolo y moneda. `03_quality_silver` tiene el widget `demo_rerun`. Se sacaron literales, se actualizó el spec 03 y se sumó un test de filas sin ID.
+  - Tests locales: 207 passed. La corrida sobre el CSV completo da los mismos números, y `active_events_without_flag` = 0.
+  - La suite completa tarda 17 min 56 s. No se probó si baja con otra configuración de Spark en los tests. Para cambios chicos: `pytest -q -m "not integration"`.
