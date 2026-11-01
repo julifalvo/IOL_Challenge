@@ -79,6 +79,7 @@ display(instruments.type_summary(mapping))
 pending = instruments.needs_review(mapping)
 print("Símbolos en NEEDS_REVIEW:", pending.count())
 display(pending)
+display(mapping.where("asset_type_source <> 'RULE'").select("symbol", "asset_type", "asset_type_source", "issuer", "description_canonical").orderBy("symbol"))
 display(mapping.where("issuer IS NOT NULL").select("symbol", "asset_type", "asset_type_source", "issuer", "sector", "underlying_ticker_foreign").orderBy("symbol").limit(config.AI_EXAMPLE_ROWS))
 print("Con emisor:", mapping.where("issuer IS NOT NULL").count(), "· con ticker extranjero:", mapping.where("underlying_ticker_foreign IS NOT NULL").count(), "· de", mapping.count())
 
