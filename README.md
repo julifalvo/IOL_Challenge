@@ -62,7 +62,7 @@ Detalle para mantenedores: [`ARCHITECTURE.md`](ARCHITECTURE.md) · contrato de t
 2. Workspace → Git folder → clonar este repo.
 3. Subir el CSV a `/Volumes/workspace/iol_bronze/landing/trades/` (el dataset original no se publica; para probar, usar `data/sample_obfuscated.csv` — ver [`data/README.md`](data/README.md)).
 4. Cotizaciones: ‹modo api (si hay egress) | correr `tools/quotes_fetcher` localmente y subir `data/quotes_raw/` a `landing/quotes/`›.
-5. IA: ‹`ai_query` | subir outputs de `tools/ai_batch` a `landing/ai/`›.
+5. IA: el notebook 09 usa `ai_query`, sin claves externas.
 6. Abrir `notebooks/00_run_pipeline` → Run all (widget `catalog` si no es `workspace`).
 7. Tests locales: `pip install -r requirements-dev.txt && pytest -q` (Java 17+).
 
@@ -77,7 +77,7 @@ Notebooks ya ejecutados (con outputs): [`notebooks_executed/`](notebooks_execute
 | 02 | ingest_bronze | CSV → Bronze idempotente | `trades_raw`, `ingestion_runs` |
 | 03 | quality_silver | Tipado, fecha efectiva, reglas | `silver.trades`, `quality_events` |
 | 04 | instruments | Mapeo, variantes, escala | `instrument_mapping` |
-| 09 | ai_enrichment | IA sobre instrumentos ambiguos | `ai_runs` |
+| 09 | ai_enrichment | Emisor, sector, ticker e instrumentos ambiguos | `ai_runs`, `instrument_enrichment` |
 | 05 | market_quotes | Cotizaciones, matching, cobertura | `fact_market_quotes`, `fact_trade_market`, `quote_coverage` |
 | 06 | model_gold | Dimensiones, SCD2, hechos | `iol_gold.*` |
 | 07 | quality_gate_monitoring | Gates + métricas + performance | `gold_status`, `pipeline_metrics` |
@@ -98,7 +98,7 @@ Notebooks ya ejecutados (con outputs): [`notebooks_executed/`](notebooks_execute
 | 8 | Fuente de cotizaciones ‹…› | ‹…› | [008](docs/decisions/ADR-008-fuente-cotizaciones.md) |
 | 9 | Benchmark de cierre, imputación ≤3 días hábiles, sin look-ahead | ‹…› | [009](docs/decisions/ADR-009-matching-imputacion.md) |
 | 10 | Cómputo productivo recomendado ‹…› | ‹…› | [010](docs/decisions/ADR-010-computo.md) |
-| 11 | IA para enriquecer instrumentos | ‹…› | [011](docs/decisions/ADR-011-ia.md) |
+| 11 | IA para enriquecer instrumentos | Completa datos que ninguna regla infiere, a cambio de validar todo y medir la calidad; no decide tipos con regla, calidad ni exclusiones | [011](docs/decisions/ADR-011-ia.md) |
 | 12 | Liquid clustering en hechos | ‹…› | [012](docs/decisions/ADR-012-performance.md) |
 
 ## 5. Calidad de datos
@@ -160,13 +160,25 @@ Cada consulta: [`sql/`](sql/). Resultados en `notebooks_executed/08_business_eda
 
 ## 10. Componente de IA
 
-- **Problema:** ‹…›
-- **Por qué IA en ese punto:** ‹…›
-- **Integración:** ‹ai_query / batch offline / diseño›
+- **Problema:** las reglas clasifican casi todos los instrumentos, pero no pueden inferir emisor, sector ni ticker del subyacente, y 10 símbolos quedaron sin tipo.
+- **Por qué IA en ese punto:** el dato de entrada es texto libre y el resultado se puede validar contra un schema. Está dentro del pipeline y solo recibe metadatos de instrumentos, nunca datos de clientes. No decide calidad ni excluye filas.
+- **Integración:** `ai_query` en Free Edition, temperatura 0, lotes de 50, caché por hash de input, prompt y modelo. Cada respuesta queda en `iol_ops.ai_runs`.
 - **Prompt:** [`prompts/instrument_enrichment_v1.md`](prompts/instrument_enrichment_v1.md)
-- **Resultado:** ‹n símbolos enriquecidos, accuracy sobre 60 etiquetados›
-- **Limitaciones:** ‹…›
-- **Secundario:** resumen de EDA validado — [`prompts/eda_summary_v1.md`](prompts/eda_summary_v1.md)
+- **Elección del modelo [MEDIDO]:** evaluación a ciegas sobre 60 símbolos.
+
+  | Modelo | `asset_type` | Ticker (22 CEDEARs) |
+  |---|---|---|
+  | Qwen3 Next 80B (elegido) | 90,0% | 95,5% |
+  | GPT OSS 120B | 83,3% | 95,5% |
+  | Llama 3.3 70B | 78,3% | 95,5% |
+
+- **Resultado [MEDIDO]:** 1.136 de 1.150 símbolos sin opciones enriquecidos; 587 de 599 CEDEARs con ticker. Tipo: 1.435 por reglas, 3 por IA, 7 por override, 0 en `NEEDS_REVIEW`. Un rerun no consulta el modelo ni cambia filas.
+- **Limitaciones:**
+  - Las etiquetas las escribió Claude Code, sin revisión humana independiente; se fijaron antes de ver los resultados y con 60 símbolos la diferencia es orientativa.
+  - Copiar el símbolo ya acierta 90,9% del ticker, así que esa cifra dice poco. Emisor y sector no están evaluados.
+  - La confianza del modelo no discrimina: un pagaré salió como letra soberana con 0,9. Por eso 7 de los 10 tipos ambiguos llevan override.
+  - Con el tipo de la regla en el input, el modelo tiende a repetirlo: 0 `CONFLICT` no prueba acuerdo.
+- **Secundario:** resumen de EDA validado — [`prompts/eda_summary_v1.md`](prompts/eda_summary_v1.md). No ejecutado: depende de la etapa 08.
 
 ## 11. Cómputo productivo
 
