@@ -46,6 +46,13 @@ def test_market_holidays_are_weekdays_inside_calendar_range():
     assert date(2026, 3, 23) not in config.MARKET_HOLIDAYS  # no laborable turístico: BYMA operó
 
 
+def test_channels_keep_five_codes_and_group_them_in_families():
+    codes = list(config.CHANNELS.values())
+    assert len(set(codes)) == 5  # Desktop y Responsive no se fusionan: preferred_channel usa el código
+    assert set(config.CHANNEL_FAMILIES) == set(codes)
+    assert set(config.CHANNEL_FAMILIES.values()) == {"APP", "WEB", "API", "IOLNET"}
+
+
 def test_contract_has_ten_columns():
     assert len(config.TRADES_CONTRACT) == 10
     assert len(set(config.TRADES_CONTRACT)) == 10

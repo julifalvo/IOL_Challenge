@@ -32,12 +32,19 @@ TRADES_CONTRACT = [
 ]
 SIDES = {"Compra": "BUY", "Venta": "SELL"}
 CURRENCIES = {"ARS", "USD"}
-CHANNELS = {
-    "App Mobile": "APP",
-    "Sitio Web Desktop": "WEB",
-    "Sitio Web Responsive": "WEB",
+CHANNELS = {  # origen -> channel_code (dim_channel, preferred_channel)
+    "App Mobile": "APP_MOBILE",
+    "Sitio Web Desktop": "WEB_DESKTOP",
+    "Sitio Web Responsive": "WEB_RESPONSIVE",
     "API": "API",
     "IOLnet": "IOLNET",
+}
+CHANNEL_FAMILIES = {  # channel_code -> channel_family: agrupación descriptiva (data_model.md)
+    "APP_MOBILE": "APP",
+    "WEB_DESKTOP": "WEB",
+    "WEB_RESPONSIVE": "WEB",
+    "API": "API",
+    "IOLNET": "IOLNET",
 }
 
 # --- Calendario (ADR-003) -----------------------------------------------------

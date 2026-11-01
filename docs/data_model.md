@@ -61,7 +61,7 @@ erDiagram
 `date_key, date, year, month, month_name, day_of_week, day_name, is_weekend, is_market_holiday, holiday_name, is_business_day, prev_business_date, is_partial_period (marzo), business_days_in_month_observed`
 
 ### `dim_channel` — 5 filas + `UNKNOWN`
-`channel_sk, channel_code, channel_family (APP/WEB/API/IOLNET), is_digital_retail` — `channel_family` es agrupación descriptiva, no supone semántica comercial.
+`channel_sk, channel_code (APP_MOBILE/WEB_DESKTOP/WEB_RESPONSIVE/API/IOLNET), channel_family (APP/WEB/API/IOLNET), is_digital_retail` — `channel_family` es agrupación descriptiva, no supone semántica comercial. Desktop y Responsive son canales distintos: `preferred_channel` se calcula sobre `channel_code`, no sobre la familia.
 
 ### `dim_currency`
 `currency_code (ARS, USD), currency_name, is_foreign`
