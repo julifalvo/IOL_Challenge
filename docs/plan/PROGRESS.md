@@ -7,8 +7,8 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 | 00 Entorno | hecho (local + Databricks) | 99/99 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 10/11 OK, 1 inconcluso (2026-11-01) | Review hecho. Outputs en `notebooks_executed/`. 2 bajas abiertas: fixture (etapa 03) y triple evaluación del MERGE (benchmark) |
 | 01 Profiling + arquitectura | parcial | 99/99 passed (2026-11-01) | `01_data_profiling` y `00_quotes_spike` OK (2026-11-01) | Review hecho. **Pendiente, por dependencia:** benchmark, §6 de `ARCHITECTURE.md` y ADR-010 necesitan Silver y Gold (día 5 de `PLAN.md`). 8 bajas abiertas (ver log) |
 | 02 Bronze | hecho (local + Databricks) | 132/132 passed en la última suite completa; 33/33 de Bronze después de las últimas correcciones (2026-11-01) | `02_ingest_bronze` OK (2026-11-01) | Review hecho. Outputs en `notebooks_executed/02_ingest_bronze.ipynb` |
-| 03 Silver + calidad | hecho (local + Databricks) | 207/207 passed (2026-11-01) | `03_quality_silver` OK (2026-11-01) | Review hecho. Outputs en `notebooks_executed/03_quality_silver.ipynb`. `DQ030` y `DQ033` pasan a la etapa 04 |
-| 04 Instrumentos | pendiente | — | — | |
+| 03 Silver + calidad | hecho (local + Databricks) | 207/207 passed (2026-11-01) | `03_quality_silver` OK (2026-11-01) | Review hecho. **A reejecutar con la etapa 04:** cambian `asset_type_rule`, DQ020 y DQ022 |
+| 04 Instrumentos | código listo | 268/268 passed (2026-11-01) | **no ejecutado** | Corrida local sobre el CSV completo OK. Falta `/review-stage 04` y correr `03_quality_silver` y `04_instruments` en Free Edition. `NEEDS_REVIEW` se cierra en la etapa 09 |
 | 05 Cotizaciones | pendiente | — | — | |
 | 06 Gold + SCD2 | pendiente | — | — | |
 | 07 Monitoreo + performance | pendiente | — | — | |
@@ -213,3 +213,23 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - Reconciliación sin diferencias, en las dos direcciones. La segunda corrida no toca nada.
   - `TIMESTAMP_NTZ` en Delta sobre Unity Catalog funciona en serverless.
   - Criterios de aceptación: los 4 ✅, con `DQ030` y `DQ033` en la etapa 04. — spec 03, `quality_rules.md`
+- 2026-11-01 — **Etapa 04 implementada (local).**
+  - Código: `instruments.py` completo, `mapping/local_stocks.csv`, `tools/quotes_fetcher/refresh_local_stocks.py`, `notebooks/04_instruments.py`, y 61 tests.
+  - Cambios respecto del spec: — ADR-004, spec 04
+    - Lista de acciones locales de data912 como regla: 87 de sus 96 símbolos están en el dataset (18.155 operaciones) y ninguna descripción la contradice.
+    - Patrón de opciones con strike decimal: 295 símbolos y 2.016 operaciones, no 231 y 1.824.
+    - `DQ030` y `DQ033`: Silver lee el mapeo si existe, y el notebook 04 reaplica Silver.
+    - `asset_type_rule` sale de la clasificación por símbolo, y `maturity_date` acepta día o mes de un dígito.
+  - Corrida con Spark 4.0.5 local sobre el CSV completo:
+    - 1.445 símbolos mapeados. La segunda corrida no toca nada, y Silver reaplicado tampoco.
+    - `NEEDS_REVIEW`: 10 símbolos y 371 operaciones, antes 178 y 19.241.
+    - Variantes: 260 `USD_MEP`, 21 `USD_CCL`, 190 `USD_OTHER`. MEP implícito ≈1.447, CCL ≈1.488; solo `TEAMD` queda fuera de 1.000–2.000.
+    - Silver: DQ020 pasa de 437 a 415, y DQ022 de 105 a 107. DQ030, DQ032 y DQ033 dan 0. `quality_status`: 89.312 OK, 10.680 WARNING, 8 ERROR.
+  - Limitaciones anotadas en ADR-004: las ON en USD como `YM34D` quedan `USD_OTHER`, igual que variantes con otro formato como `GOGLD` y `TGSUD`.
+  - Proveedores: todo queda `UNVERIFIED` hasta la etapa 05. Yahoo para CEDEARs y acciones en USD, y BYMA para subsoberanos, son provisionales. — ADR-008
+  - `dim_instrument` queda para la etapa 06.
+  - Criterios de aceptación:
+    - ❌ 1.445 símbolos mapeados, sin `NEEDS_REVIEW`: mapeados en local; quedan 10 símbolos para la IA de la etapa 09.
+    - ✅ ADR-004 documenta reglas, casos borde y cómo agregar un símbolo.
+    - ✅ Tests verdes: 268 passed, en 22 min 19 s.
+  - El notebook 01 también cambiará en la corrida final: su celda 6 usa estas reglas.

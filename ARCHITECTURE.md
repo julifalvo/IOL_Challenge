@@ -6,8 +6,8 @@ Documento técnico para el equipo que mantiene el pipeline. Las decisiones y sus
 
 | Parte | Estado |
 |---|---|
-| Entorno, helpers de escritura, calendario, profiling, Bronze, Silver | Implementado |
-| Instrumentos, cotizaciones, Gold, gates, EDA, IA, orquestador | Diseñado en `docs/specs/`, **no implementado** |
+| Entorno, helpers de escritura, calendario, profiling, Bronze, Silver, mapeo de instrumentos por reglas | Implementado |
+| IA, cotizaciones, Gold, gates, EDA, IA, orquestador | Diseñado en `docs/specs/`, **no implementado** |
 | Benchmark y comparativa de cómputo (§6) | **No ejecutado** |
 
 Los números de este documento salen del notebook `01_data_profiling`, corrido en Free Edition sobre el CSV completo [MEDIDO, 2026-11-01; `notebooks_executed/01_data_profiling.ipynb`].
@@ -111,7 +111,7 @@ Por `ingestion_run_id` o rango de fechas. Silver reaplica reglas cuando cambia `
 
 ## 7. Operación
 
-Los notebooks de las etapas 04 en adelante son el diseño previsto; todavía no existen.
+Los notebooks de las etapas 05 en adelante son el diseño previsto; todavía no existen.
 
 ### 7.1 Correr el pipeline
 1. Una vez por workspace: `00_setup` (schemas, Volume, chequeo del CSV).
