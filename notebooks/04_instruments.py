@@ -17,6 +17,8 @@ import os
 import sys
 import uuid
 
+import requests
+
 sys.path.insert(0, os.path.abspath("../src"))
 from iol_pipeline import instruments, io, silver
 
@@ -28,6 +30,7 @@ io.ensure_schemas(spark, catalog=CATALOG)
 bronze_table = io.table_name("bronze", "trades_raw", catalog=CATALOG)
 silver_table = io.table_name("silver", "trades", catalog=CATALOG)
 mapping_table = io.table_name("ops", "instrument_mapping", catalog=CATALOG)
+enrichment_table = io.table_name("ops", "instrument_enrichment", catalog=CATALOG)  # la escribe el notebook 09
 baselines_table = io.table_name("ops", "quality_baselines", catalog=CATALOG)
 events_table = io.table_name("ops", "quality_events", catalog=CATALOG)
 
@@ -39,11 +42,11 @@ events_table = io.table_name("ops", "quality_events", catalog=CATALOG)
 
 # COMMAND ----------
 
-first = instruments.run_instruments(spark, silver_table, mapping_table)
+first = instruments.run_instruments(spark, silver_table, mapping_table, enrichment_table=enrichment_table)
 print("1ra corrida:", first)
 second = None
 if dbutils.widgets.get("demo_rerun") == "true":
-    second = instruments.run_instruments(spark, silver_table, mapping_table)
+    second = instruments.run_instruments(spark, silver_table, mapping_table, enrichment_table=enrichment_table)
     print("2da corrida:", second)
 reapplied = silver.run_silver(spark, bronze_table, silver_table, baselines_table, events_table, RUN_ID, mapping_table)
 print("Silver reaplicado:", reapplied)
@@ -68,7 +71,10 @@ print("Símbolos en el mapeo:", mapping.count(), "· en Silver:", trades.select(
 
 # COMMAND ----------
 
-display(instruments.variants_with_implied_fx(mapping, trades))
+variants = instruments.variants_with_implied_fx(mapping, trades)
+display(variants)
+print("Variantes con cambio implícito fuera de rango:")
+display(instruments.variants_fx_out_of_range(variants))
 
 # COMMAND ----------
 
@@ -92,6 +98,29 @@ display(pending)
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ## 5. Validación independiente contra data912
+# MAGIC Compara la clasificación con las listas por tipo de data912, que son de hoy. La de acciones no cuenta: es la misma que usa la regla.
+
+# COMMAND ----------
+
+display(instruments.agreement_with_provider_lists(spark, mapping, requests.get))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 6. Reconciliación de Silver después de reaplicar
+
+# COMMAND ----------
+
+check = silver.reconciliation(spark.table(bronze_table), trades, spark.table(events_table))
+for key, value in check.items():
+    print(f"{key:30} {value:,}")
+reconciled = check["bronze_rows"] == check["silver_rows"] and not any(v for k, v in check.items() if k not in ("bronze_rows", "silver_rows"))
+print("Reconciliación:", "OK" if reconciled else "CON DIFERENCIAS")
+
+# COMMAND ----------
+
 idempotent = second is None or second["rows_inserted"] == second["rows_updated"] == 0
 complete = first["symbols"] == trades.select("symbol").distinct().where("symbol IS NOT NULL").count()
-dbutils.notebook.exit(json.dumps({"status": "SUCCESS" if idempotent and complete else "FAILED", "pipeline_run_id": RUN_ID, "rows_out": first["symbols"]}))
+dbutils.notebook.exit(json.dumps({"status": "SUCCESS" if idempotent and complete and reconciled else "FAILED", "pipeline_run_id": RUN_ID, "rows_out": first["symbols"]}))
