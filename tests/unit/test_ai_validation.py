@@ -164,6 +164,16 @@ def test_enrichment_rows_only_use_valid_and_reach_the_variants():
     assert ai.enrichment_rows([conflict], bad, MODEL) == []
 
 
+def test_ticker_is_kept_only_for_cedears():
+    def ticker_for(asset_type):
+        output = {**OUTPUT, "asset_type": asset_type, "underlying_ticker_foreign": "YPF"}
+        runs = ai.enrich([ITEM], _fake(responses=[(json.dumps([output]), None)]), MODEL, ai.COMPONENT_ENRICHMENT, "p1", set())
+        return ai.enrichment_rows([ITEM], runs, MODEL)[0][4]
+
+    assert ticker_for("CEDEAR") == "YPF"
+    assert ticker_for("ON") is None
+
+
 def test_gold_labels_are_a_stratified_sample_of_sixty():
     labels = ai.read_gold_labels()
     assert len(labels) == 60 == len({row["symbol"] for row in labels})

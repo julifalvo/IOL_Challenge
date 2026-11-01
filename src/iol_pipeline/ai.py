@@ -177,8 +177,9 @@ def enrichment_rows(items: list[dict], runs: list[dict], model: str, prompt_vers
         run = by_hash.get(input_hash(item, version, model))
         if run:
             output = json.loads(run["output_json"])
+            ticker = output.get("underlying_ticker_foreign") if output["asset_type"] == "CEDEAR" else None  # el campo solo tiene sentido en un CEDEAR
             for symbol in [item["symbol"], *item["sibling_symbols"]]:
-                rows.append((symbol, output["asset_type"], output.get("issuer"), output.get("sector"), output.get("underlying_ticker_foreign"),
+                rows.append((symbol, output["asset_type"], output.get("issuer"), output.get("sector"), ticker,
                              float(output["confidence"]), model, version, run["ai_run_id"], True))
     return rows
 
