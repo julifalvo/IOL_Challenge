@@ -1,6 +1,6 @@
 # ADR-011 — IA aplicada: enriquecimiento de instrumentos (principal) y resumen de EDA (secundario)
 
-- **Estado:** propuesto
+- **Estado:** componente A aceptado y medido; componente B pendiente de la etapa 08
 - **Requisitos:** R-28, R-29, R-30
 
 ## Decisión
@@ -31,6 +31,26 @@ Las reglas y la lista de acciones de ADR-004 dejan solo 10 símbolos y 371 opera
 - El ticker no separa a los modelos, y copiar el símbolo ya acierta 20 de 22 (90,9%), contra 21 de 22 de los modelos. La muestra casi no mide esta capacidad: solo tiene 2 casos no triviales.
 - Issuer y sector no se evaluaron contra etiquetas.
 
+## Resultado del componente A [MEDIDO, Free Edition, 2026-11-01]
+| Métrica | Valor |
+|---|---|
+| Instrumentos consultados | 747 (1.150 símbolos sin opciones, agrupados por subyacente) |
+| Validación | 737 `VALID`, 10 `REJECTED`, 0 `CONFLICT`, 0 `LOW_CONFIDENCE`, 0 `FAILED` |
+| Rechazos | 8 con sector `TRANSPORTE` y 2 con un tipo en el campo sector, ninguno del enum |
+| Símbolos enriquecidos | 1.136 de 1.150 |
+| Con emisor | 1.134 de 1.150 (5 por override) |
+| Con ticker extranjero | 587 de 599 CEDEARs |
+| Origen del tipo | `RULE` 1.435, `AI` 3, `MANUAL` 7, `NEEDS_REVIEW` 0 |
+| Rerun | 0 consultas y 0 filas cambiadas |
+| Latencia promedio por lote | Qwen 5,6 s; Llama 23,2 s |
+
+### Qué mostró la corrida
+- **La IA resolvió 3 de los 10 tipos pendientes** (`D30A6`, `DGCE`, `SFD4D`: 261 operaciones). Los otros 7 (110 operaciones) llevan override en `mapping/overrides.csv`, con el motivo. El aporte principal es el emisor y el sector, no el tipo.
+- **La confianza no discrimina:** el pagaré `#MAV150560106` salió como letra soberana con confianza 0,9, sobre el umbral.
+- **0 `CONFLICT` no prueba acuerdo:** el modelo recibe el tipo de la regla y tiende a repetirlo. Al reconsultar con el tipo corregido, los 7 devolvieron ese tipo: `SHELD` pasó de "no es CEDEAR" a "CEDEAR de Shell Plc". El contraste independiente es la evaluación a ciegas.
+- **El ticker casi no está medido:** en 342 de 360 CEDEARs base coincide con el símbolo. `ADGO` devuelve `ADGO`, y Adecoagro cotiza en NYSE como `AGRO` según el conocimiento del autor, sin verificar. Es un dato descriptivo: `provider_symbol` no sale de él.
+- **Rechazar la fila entera tiene costo:** un sector inválido también descarta emisor y ticker. Se aceptó para no usar a medias una respuesta fuera de contrato; afecta a 10 instrumentos.
+
 ## Por qué el principal es clasificación y no el resumen
 Está **dentro** del pipeline: mejora `dim_instrument`, el mapeo a la fuente de cotización y los cortes del análisis. El resumen es consumo; útil, pero no cambia la calidad del dato.
 
@@ -44,7 +64,7 @@ Está **dentro** del pipeline: mejora `dim_instrument`, el mapeo a la fuente de 
 ### Endpoints de serving disponibles en Free Edition [MEDIDO, 2026-11-01]
 `databricks-bge-large-en`, `databricks-deepseek-v4-flash-0731`, `databricks-gemma-3-12b`, `databricks-gpt-oss-120b`, `databricks-gpt-oss-20b`, `databricks-gte-large-en`, `databricks-llama-4-maverick`, `databricks-meta-llama-3-1-8b-instruct`, `databricks-meta-llama-3-3-70b-instruct`, `databricks-qwen3-embedding-0-6b`, `databricks-qwen3-next-80b-a3b-instruct`, `databricks-qwen35-122b-a10b`.
 
-- El modelo de la etapa 09 se elige ahí, con la muestra etiquetada. Llama 3.3 70B solo se probó con ese prompt de conectividad: su calidad para clasificar no está medida.
+- El modelo se eligió con la muestra etiquetada: ver [Elección del modelo](#elección-del-modelo-medido-free-edition-2026-11-01).
 - `config.SMOKE_AI_MODEL` deja de ser [SUPUESTO]: el endpoint existe y respondió.
 
 ## Privacidad
