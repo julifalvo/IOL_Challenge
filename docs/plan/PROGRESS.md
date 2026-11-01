@@ -1,11 +1,11 @@
-# Progreso
+﻿# Progreso
 
 Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition con outputs guardados.
 
 | Spec | Estado | Tests locales | Databricks | Pendientes / notas |
 |---|---|---|---|---|
-| 00 Entorno | hecho (local + Databricks) | 46/46 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 9/9 OK (2026-11-01), con la versión anterior de ambos notebooks | Review hecho. **Pendientes:** volver a correr y exportar `00_setup` y `00_smoke_test`, spike ADR-008 (ver log del 2026-11-01). Outputs actuales en `notebooks_executed/` |
-| 01 Profiling + arquitectura | pendiente | — | — | |
+| 00 Entorno | hecho (local + Databricks) | 46/46 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 9/9 OK (2026-11-01), con la versión anterior de ambos notebooks | Review hecho. **Pendiente:** volver a correr y exportar `00_setup` y `00_smoke_test`. Outputs actuales en `notebooks_executed/` |
+| 01 Profiling + arquitectura | parcial | 95/95 passed (2026-11-01) | **no ejecutado** | Notebook y `ARCHITECTURE.md` escritos; funciones corridas con Spark local sobre el CSV. Falta correr en Free Edition. Benchmark y ADR-010 pendientes: necesitan Silver y Gold (ver log) |
 | 02 Bronze | pendiente | — | — | |
 | 03 Silver + calidad | pendiente | — | — | |
 | 04 Instrumentos | pendiente | — | — | |
@@ -90,7 +90,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - Tests locales: 39 passed.
 - 2026-11-01 — **Pendientes abiertos de la etapa 00:**
   - Volver a correr `00_setup` y `00_smoke_test` en Free Edition y exportarlos. Los `.ipynb` actuales son de la versión anterior de los notebooks: **no ejecutado** con el código corregido. El de `00_setup` todavía muestra el email del usuario en un output, y va a seguir en el historial de git aunque se reemplace.
-  - Spike de cotizaciones de ADR-008 (8 símbolos, 4 proveedores): **no ejecutado**. `PLAN.md` lo ubica en el día 1 y el spec 04 depende de él, así que tiene que estar antes de la etapa 04. La API de IOL requiere cuenta.
+  - Spike de cotizaciones de ADR-008: medido desde local el 2026-11-01. Falta `00_quotes_spike` desde Free Edition, y la API de IOL, que requiere cuenta.
   - Hallazgos de severidad baja que siguen abiertos:
     - El fixture no tiene casos de DQ005, DQ031 ni `tipoTran`/`origen` inválidos. Se suman en la etapa 03.
     - `write_delta_merge` evalúa el origen 3 veces. Se revisa junto con el benchmark.
@@ -105,3 +105,19 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - `profile_local.py` toma los feriados de `config`; `pyproject.toml` pide Python 3.11 o superior.
   - Limpiadas las entradas viejas de este log.
   - Tests locales: 46 passed. `profile_local.py` da la misma salida que antes del cambio.
+- 2026-11-01 — **Sin acceso de Claude Code a Databricks.** No hay CLI, configuración ni credenciales en la máquina, y no se generó ningún token. Las corridas en Free Edition las hace el usuario.
+- 2026-11-01 — **Etapa 01, parcial.**
+  - Código: `calendar.py`, `segmentation.py`, `profiling.py`, `notebooks/01_data_profiling.py`, y 44 tests. `calendar.py` y `segmentation.py` se reusan en las etapas 03 y 06.
+  - Corrida con Spark 4.0.5 local sobre el CSV completo: coincide con `profile_local.py` en lo comparable (conteos, sábados, canales, percentiles, 279 símbolos, 13 anomalías, 21/18/10 días hábiles). Las fechas no dependen de la zona horaria de la sesión.
+  - Celda 10: 16.814 clientes con 2 o más versiones; 458, 401 y 277 cambios de canal entre puntos. ADR-007 sigue vigente. Ese 16.814 coincide con un valor descartado el 2026-10-31, pero ahora sale de la definición fijada, y tiene explicación: son los clientes con 2 o más operaciones. — ADR-007
+  - Criterios de aceptación:
+    - ⏳ Notebook 01 con las 10 celdas y outputs: escrito, **no ejecutado** en Free Edition.
+    - ⏳ Celda 10 con (a) y (b): medida en local, **no ejecutada** en Free Edition.
+    - ❌ `ARCHITECTURE.md` completo: escrito, pero §6 no tiene datos porque depende del benchmark. Sus números vienen de la corrida local.
+    - ❌ Benchmark 1x/10x/100x: **no ejecutado**. Corre Silver y Gold, que no existen; `PLAN.md` lo ubica en el día 5.
+    - ❌ ADR-010 con tabla, fórmula, precios fechados y recomendación: depende del benchmark.
+- 2026-11-01 — **Spike de cotizaciones desde local.** `tools/quotes_fetcher/spike.py`.
+  - BYMA cubre 8/8, data912 5/8, Yahoo 3/8. IOL da HTTP 401 sin credenciales.
+  - BYMA da los bonos soberanos ajustados, y el sanity check de ADR-005 no lo detecta. BYMA y Yahoo dan `YPFD` a ×0,1.
+  - Propuesta: data912 para bonos soberanos y acciones; BYMA para CEDEARs, letras y ONs. data912 es un proyecto personal sin garantías: es el principal riesgo.
+  - Pendientes para la etapa 04 y 05: factor de escala por símbolo y no solo por (proveedor, `asset_type`), revisar el rango del sanity check, y tratar días como el 08/01. — ADR-005, ADR-008
