@@ -43,14 +43,14 @@
 
 ## Smoke test del día 1 (checklist)
 
-- [ ] Cuenta Free Edition creada; anotar región y catálogo por defecto.
-- [ ] `CREATE SCHEMA` en el catálogo; `CREATE VOLUME`; subir CSV al Volume.
-- [ ] Git folder conectado al repo; `import` de `src/` desde un notebook.
-- [ ] `dbutils.notebook.run()` funciona en serverless.
-- [ ] `requests.get` a cada proveedor candidato → anotar OK/bloqueado en ADR-008.
-- [ ] `SELECT ai_query(...)` con algún modelo disponible → anotar OK/no en ADR-011.
-- [ ] `ALTER TABLE ... CLUSTER BY` sobre una tabla de prueba.
-- [ ] Export de un notebook a `.ipynb` con outputs y verificación del archivo.
+- [ ] Cuenta Free Edition creada; anotar región y catálogo por defecto. Cuenta creada; `00_smoke_test` los registra, falta volver a correrlo.
+- [x] `CREATE SCHEMA` en el catálogo; `CREATE VOLUME`; subir CSV al Volume.
+- [x] Git folder conectado al repo; `import` de `src/` desde un notebook.
+- [x] `dbutils.notebook.run()` funciona en serverless.
+- [x] `requests.get` a cada proveedor candidato → anotar OK/bloqueado en ADR-008.
+- [x] `SELECT ai_query(...)` con algún modelo disponible → anotar OK/no en ADR-011.
+- [ ] `ALTER TABLE ... CLUSTER BY` sobre una tabla de prueba. Ya está en `00_smoke_test`, falta volver a correrlo.
+- [x] Export de un notebook a `.ipynb` con outputs y verificación del archivo.
 
 ## Arranque con Claude Code (VS Code)
 

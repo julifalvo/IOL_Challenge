@@ -4,7 +4,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 
 | Spec | Estado | Tests locales | Databricks | Pendientes / notas |
 |---|---|---|---|---|
-| 00 Entorno | hecho (local + Databricks) | 39/39 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 9/9 OK (2026-11-01), con el criterio anterior de egress | Review hecho. **Pendientes:** volver a correr y exportar `00_smoke_test`, spike ADR-008, hallazgos de severidad baja (ver log del 2026-11-01). Outputs en `notebooks_executed/00_setup.ipynb` y `00_smoke_test.ipynb` |
+| 00 Entorno | hecho (local + Databricks) | 46/46 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 9/9 OK (2026-11-01), con la versión anterior de ambos notebooks | Review hecho. **Pendientes:** volver a correr y exportar `00_setup` y `00_smoke_test`, spike ADR-008 (ver log del 2026-11-01). Outputs actuales en `notebooks_executed/` |
 | 01 Profiling + arquitectura | pendiente | — | — | |
 | 02 Bronze | pendiente | — | — | |
 | 03 Silver + calidad | pendiente | — | — | |
@@ -19,7 +19,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 
 ## Log de decisiones tomadas en la marcha
 
-- 2026-10-31 — Entorno local Windows nativo (PowerShell), Python 3.11 + JDK 17. **Pendiente:** instalar Python 3.11 (el `py -3.11` registrado apunta a un ejecutable inexistente), JDK 17 (hoy solo JDK 22) y winutils/hadoop.dll; definir `JAVA_HOME`, `HADOOP_HOME` y `PYSPARK_PYTHON`. — CLAUDE.md, PLAN.md
+- 2026-10-31 — Entorno local Windows nativo (PowerShell), Python 3.11 + JDK 17. ~~**Pendiente:** instalar Python 3.11 (el `py -3.11` registrado apunta a un ejecutable inexistente), JDK 17 (hoy solo JDK 22) y winutils/hadoop.dll; definir `JAVA_HOME`, `HADOOP_HOME` y `PYSPARK_PYTHON`.~~ Resuelto, ver "Entorno local verificado". — CLAUDE.md, PLAN.md
 - 2026-10-31 — `requisitos_pdf.md`: R-09, R-15, R-17, R-35 y R-37 corregidos con cita literal; se agrega R-40 (4 situaciones del Contexto). — ADR-001
 - 2026-10-31 — Filas IOLnet con escala anómala: 8 de 13 [MEDIDO]; "valor por defecto" pasa a [HIPÓTESIS]. — ADR-005
 - 2026-10-31 — **Descartados** los valores esperados de SCD2 (~8.000 clientes con ≥2 versiones; 255/181 cambios de canal) y las mediciones pandas que se hicieron para contrastarlos (8.040 / 16.814 y las 5 reglas de desempate).
@@ -77,7 +77,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - Consecuencias:
     - ADR-008: el modo `api` desde Databricks es viable a nivel red, pero los endpoints de datos no se probaron. El fetcher local queda como plan B por rate limiting o términos de uso, no por egress.
     - ADR-011: `ai_query` está disponible; el modelo de la etapa 09 se elige entre los 12 endpoints listados.
-  - Criterios de aceptación de la etapa 00: los 4 ✅. Falta exportar los notebooks con outputs a `notebooks_executed/`, que es parte del entregable.
+  - Criterios de aceptación de la etapa 00: los 4 ✅. ~~Falta exportar los notebooks con outputs a `notebooks_executed/`.~~ Exportados en `8aaba06`.
   - — ADR-001, ADR-008, ADR-011
 - 2026-11-01 — **Decisión: Free Edition sin consultar a IOL.** No se envió el mail y se eliminó `docs/plan/consulta_iol.md`. ADR-001 pasa a aceptado; el desvío de R-37 se declara en el README. — ADR-001
 - 2026-11-01 — **`/review-stage 00`:** listo con cambios menores, sin severidad alta. Corregidos los de severidad media:
@@ -89,18 +89,19 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - Runtime real documentado (Spark 4.2.0, Python 3.12.3) y su diferencia con local. — ADR-001, CLAUDE.md
   - Tests locales: 39 passed.
 - 2026-11-01 — **Pendientes abiertos de la etapa 00:**
-  - Volver a correr `00_smoke_test` en Free Edition y exportarlo. El `.ipynb` actual es de la versión anterior del notebook: **no ejecutado** con el código corregido.
+  - Volver a correr `00_setup` y `00_smoke_test` en Free Edition y exportarlos. Los `.ipynb` actuales son de la versión anterior de los notebooks: **no ejecutado** con el código corregido. El de `00_setup` todavía muestra el email del usuario en un output, y va a seguir en el historial de git aunque se reemplace.
   - Spike de cotizaciones de ADR-008 (8 símbolos, 4 proveedores): **no ejecutado**. `PLAN.md` lo ubica en el día 1 y el spec 04 depende de él, así que tiene que estar antes de la etapa 04. La API de IOL requiere cuenta.
-  - Hallazgos de severidad baja, sin corregir:
-    - ADR-003: etiquetar [SUPUESTO] la regla "feriado bursátil = feriado nacional" y alinear el nombre `MARKET_CALENDAR` del spec 00. Evidencia a citar: entre 02/01 y 13/03 los únicos días hábiles sin operaciones son 16 y 17/02 [MEDIDO].
-    - `scripts/profile_local.py:18` tiene su propia lista de feriados.
-    - `00_setup` y `00_smoke_test` salen con `SUCCESS` aunque falte el CSV, no coincida el contrato o falle un chequeo.
-    - El MERGE de `00_smoke_test` no tiene `try`, aunque la cabecera dice que ningún chequeo corta.
-    - Números mágicos 500, 300 y 200 en `00_smoke_test.py` y `smoke.py`.
-    - `write_delta_merge` evalúa el origen 3 veces.
-    - ADR-011 dice que `ai_query` respondió a `ping`; el prompt real fue `Respond with the single word: pong`.
-    - `PLAN.md`: `ALTER TABLE ... CLUSTER BY` sin probar, checklist sin marcar, región sin anotar.
-    - Entradas viejas de este log siguen diciendo "pendiente" o "falta exportar".
+  - Hallazgos de severidad baja que siguen abiertos:
     - El fixture no tiene casos de DQ005, DQ031 ni `tipoTran`/`origen` inválidos. Se suman en la etapa 03.
-    - `00_setup.ipynb` muestra el email del usuario en un output. Decisión del usuario.
-    - `pyproject.toml` declara `>=3.10`; CLAUDE.md pide 3.11 o superior.
+    - `write_delta_merge` evalúa el origen 3 veces. Se revisa junto con el benchmark.
+- 2026-11-01 — **Corregidos los otros 10 hallazgos de severidad baja:**
+  - `00_setup` y `00_smoke_test` devuelven `FAILED` si falta el CSV, no coincide el contrato o falla un chequeo. `INCONCLUSO` no cuenta como falla.
+  - El MERGE de `00_smoke_test` tiene `try`, y el resumen se muestra aunque falle.
+  - Los límites de texto del smoke pasan a `config.py`.
+  - El smoke prueba `ALTER TABLE ... CLUSTER BY` y registra región y catálogo. **No ejecutado** todavía; por eso esos dos ítems siguen abiertos en el checklist de `PLAN.md`.
+  - `00_setup` ya no imprime el usuario.
+  - ADR-003 etiqueta el calendario como [SUPUESTO] y cita la evidencia; el spec 00 usa `MARKET_HOLIDAYS`.
+  - ADR-011 cita el prompt real de `ai_query`.
+  - `profile_local.py` toma los feriados de `config`; `pyproject.toml` pide Python 3.11 o superior.
+  - Limpiadas las entradas viejas de este log.
+  - Tests locales: 46 passed. `profile_local.py` da la misma salida que antes del cambio.
