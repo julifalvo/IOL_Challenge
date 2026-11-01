@@ -1,4 +1,4 @@
-﻿# Progreso
+# Progreso
 
 Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition con outputs guardados.
 
