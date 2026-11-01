@@ -58,7 +58,7 @@ Se obtiene con `python -m tools.quotes_fetcher.spike <csv>`. Desde Free Edition:
 
 **Límite del spike:** son 8 símbolos. La cobertura y la escala del resto se miden en la etapa 05.
 
-## Decisión (propuesta, a confirmar con la corrida desde Free Edition y la etapa 05)
+## Decisión (aceptada el 2026-11-01; a confirmar con la corrida desde Free Edition y la cobertura de la etapa 05)
 | `asset_type` | Primario | Fallback | Por qué |
 |---|---|---|---|
 | Bonos soberanos | data912 | ninguno | BYMA los da ajustados; Yahoo no los tiene |

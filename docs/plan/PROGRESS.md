@@ -119,5 +119,5 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 - 2026-11-01 — **Spike de cotizaciones desde local.** `tools/quotes_fetcher/spike.py`.
   - BYMA cubre 8/8, data912 5/8, Yahoo 3/8. IOL da HTTP 401 sin credenciales.
   - BYMA da los bonos soberanos ajustados, y el sanity check de ADR-005 no lo detecta. BYMA y Yahoo dan `YPFD` a ×0,1.
-  - Propuesta: data912 para bonos soberanos y acciones; BYMA para CEDEARs, letras y ONs. data912 es un proyecto personal sin garantías: es el principal riesgo.
+  - Decisión aceptada por el usuario: data912 para bonos soberanos y acciones; BYMA para CEDEARs, letras y ONs. data912 es un proyecto personal sin garantías: es el principal riesgo.
   - Pendientes para la etapa 04 y 05: factor de escala por símbolo y no solo por (proveedor, `asset_type`), revisar el rango del sanity check, y tratar días como el 08/01. — ADR-005, ADR-008
