@@ -6,7 +6,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 |---|---|---|---|---|
 | 00 Entorno | hecho (local + Databricks) | 99/99 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 10/11 OK, 1 inconcluso (2026-11-01) | Review hecho. Outputs en `notebooks_executed/`. 2 bajas abiertas: fixture (etapa 03) y triple evaluación del MERGE (benchmark) |
 | 01 Profiling + arquitectura | parcial | 99/99 passed (2026-11-01) | `01_data_profiling` y `00_quotes_spike` OK (2026-11-01) | Review hecho. **Pendiente, por dependencia:** benchmark, §6 de `ARCHITECTURE.md` y ADR-010 necesitan Silver y Gold (día 5 de `PLAN.md`). 8 bajas abiertas (ver log) |
-| 02 Bronze | código listo | 132/132 passed (2026-11-01) | **no ejecutado** | Review hecho. Corrida local sobre el CSV completo OK. Falta correr `02_ingest_bronze` en Free Edition. 1 baja abierta: caso `DQ008` en el fixture (etapa 03) |
+| 02 Bronze | hecho (local + Databricks) | 132/132 passed en la última suite completa; 33/33 de Bronze después de las últimas correcciones (2026-11-01) | `02_ingest_bronze` OK (2026-11-01) | Review hecho. Outputs en `notebooks_executed/02_ingest_bronze.ipynb`. 1 baja abierta: caso `DQ008` en el fixture (etapa 03) |
 | 03 Silver + calidad | pendiente | — | — | |
 | 04 Instrumentos | pendiente | — | — | |
 | 05 Cotizaciones | pendiente | — | — | |
@@ -172,3 +172,9 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - Tests locales: 132 passed, en 8 min 37 s: los de integración hacen muchos MERGE reales. La ingesta sobre el CSV completo da lo mismo que antes.
   - Hallazgo de severidad baja abierto: el caso `DQ008` todavía no está en el fixture.
 - 2026-11-01 — **Corregidos los otros 5 hallazgos de severidad baja de la etapa 02:** `02_ingest_bronze` llama a `ensure_schemas` y no rompe si el primer archivo falla; los literales pasan a `config.py`; `quality_rules.md` y `data_model.md` corregidos. Ese camino de falla del notebook **no se ejecutó**: solo se compiló.
+- 2026-11-01 — **Etapa 02 corrida en Free Edition.** El código del `.ipynb` es idéntico al del repo.
+  - 1ra corrida: 100.000 insertadas. 2da corrida: 0 insertadas, 100.000 presentes. Ambas `SUCCESS`.
+  - `trades_raw`: 100.000 filas, formato Delta. Sin corridas huérfanas.
+  - `createDataFrame` con 100.000 filas por Spark Connect y `open()` sobre el Volume funcionan en serverless.
+  - El hash del archivo coincide con el local (`dd9e9b96…`): es el mismo CSV, byte a byte.
+  - Criterios de aceptación: los 4 ✅. — ADR-002

@@ -34,4 +34,6 @@ La trazabilidad es requisito de negocio. Reprocesar el mismo archivo no puede du
 Auto Loader / `COPY INTO` por archivo en landing; misma clave de MERGE; trazabilidad de fila por `_metadata.file_path + record_hash` (sin número de línea).
 
 ## Evidencia
-[MEDIDO, Spark 4.0.5 local sobre el CSV completo, 2026-11-01] Dos corridas consecutivas: 100.000 insertadas y después 0 insertadas con 100.000 presentes. 100.000 pares (id, hash) distintos. El módulo `csv` y el lector de Spark leen las mismas filas, sin diferencias. Falta la corrida del notebook 02 en Free Edition: **no ejecutado**.
+[MEDIDO en Free Edition, 2026-11-01; `notebooks_executed/02_ingest_bronze.ipynb`] Dos corridas consecutivas: 100.000 insertadas, y después 0 insertadas con 100.000 presentes. La tabla queda con 100.000 filas, en formato Delta, y sin corridas huérfanas.
+
+[MEDIDO, Spark 4.0.5 local] 100.000 pares (id, hash) distintos. El módulo `csv` y el lector de Spark leen las mismas filas, sin diferencias. El hash del archivo coincide entre local y el Volume: es el mismo CSV, byte a byte.
