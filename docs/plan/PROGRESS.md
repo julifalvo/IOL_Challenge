@@ -5,7 +5,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 | Spec | Estado | Tests locales | Databricks | Pendientes / notas |
 |---|---|---|---|---|
 | 00 Entorno | hecho (local + Databricks) | 46/46 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 9/9 OK (2026-11-01), con la versión anterior de ambos notebooks | Review hecho. **Pendiente:** volver a correr y exportar `00_setup` y `00_smoke_test`. Outputs actuales en `notebooks_executed/` |
-| 01 Profiling + arquitectura | parcial | 95/95 passed (2026-11-01) | **no ejecutado** | Notebook y `ARCHITECTURE.md` escritos; funciones corridas con Spark local sobre el CSV. Falta correr en Free Edition. Benchmark y ADR-010 pendientes: necesitan Silver y Gold (ver log) |
+| 01 Profiling + arquitectura | parcial | 99/99 passed (2026-11-01) | **no ejecutado** | Notebook y `ARCHITECTURE.md` escritos; funciones corridas con Spark local sobre el CSV. Review hecho. Falta correr en Free Edition. Benchmark y ADR-010 pendientes: necesitan Silver y Gold (ver log) |
 | 02 Bronze | pendiente | — | — | |
 | 03 Silver + calidad | pendiente | — | — | |
 | 04 Instrumentos | pendiente | — | — | |
@@ -119,5 +119,25 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 - 2026-11-01 — **Spike de cotizaciones desde local.** `tools/quotes_fetcher/spike.py`.
   - BYMA cubre 8/8, data912 5/8, Yahoo 3/8. IOL da HTTP 401 sin credenciales.
   - BYMA da los bonos soberanos ajustados, y el sanity check de ADR-005 no lo detecta. BYMA y Yahoo dan `YPFD` a ×0,1.
-  - Decisión aceptada por el usuario: data912 para bonos soberanos y acciones; BYMA para CEDEARs, letras y ONs. data912 es un proyecto personal sin garantías: es el principal riesgo.
+  - Primera decisión aceptada por el usuario: data912 para bonos soberanos y acciones; ~~BYMA para CEDEARs~~, letras y ONs. Corregida, ver `/review-stage 01`. data912 es un proyecto personal sin garantías: es el principal riesgo.
   - Pendientes para la etapa 04 y 05: factor de escala por símbolo y no solo por (proveedor, `asset_type`), revisar el rango del sanity check, y tratar días como el 08/01. — ADR-005, ADR-008
+- 2026-11-01 — **`/review-stage 01`:** no listo hasta corregir, con 1 hallazgo de severidad alta. Corregidos el de severidad alta y los 8 de severidad media:
+  - **Alta:** BYMA también ajusta CEDEARs; MSFT da +0,86% contra un umbral de 0,5%. Los CEDEARs en ARS pasan a data912 (aceptado por el usuario). Las variantes en USD se deciden en la etapa 05. — ADR-008
+  - El spike comparaba medianas de ventanas distintas (MSFT daba 0,926 en lugar de 1,0001). Ahora mide contra el cierre del mismo día, y suma 8 CEDEARs. — ADR-008
+  - YM34D da 4% de sesgo con BYMA, su única fuente; queda como pendiente de la etapa 05. — ADR-008
+  - `price_scale_factor` pasa a ser por símbolo y proveedor: SPY y `YPFD` tienen otra escala en BYMA y Yahoo. — ADR-005, spec 04
+  - Una fecha fuera del calendario deja `effective_trade_date` en null, con la regla nueva `DQ014`. El fixture no tiene ese caso: se suma en la etapa 03. — ADR-003, `quality_rules.md`
+  - Definidas las filas que cuentan para los atributos de cliente; el notebook muestra las excluidas. — ADR-007, spec 06
+  - `data_model.md` y el spec 03 reflejan `TIMESTAMP_NTZ`, `convert_timezone` y las columnas nuevas.
+  - `test_monthly_activity_uses_effective_date` ahora afirma los días hábiles.
+  - Tests locales: 99 passed. La corrida con Spark local sobre el CSV completo da lo mismo que antes de los cambios, y 0 filas excluidas.
+  - Hallazgos de severidad baja, sin corregir:
+    - ISO sin milisegundos queda en null: documentarlo en `trades_v1`.
+    - Los rankings no desempatan (`profiling.py`).
+    - La celda 1 no muestra compras/ventas ni monedas.
+    - Asserts débiles en `test_share_in_session_is_a_proportion` y `test_multichannel_clients_includes_the_fixture_case`.
+    - El 20 del top de símbolos está dos veces en `config.py`.
+    - Zona horaria y pausa fijas en `spike.py`, y un `5` literal en `profiling.py`.
+    - `ARCHITECTURE.md` §5.6 no tiene un escenario de volumen productivo.
+    - ADR-008 generaliza desde AL30 el comportamiento del sufijo `24HS`.
+- 2026-11-01 — **Observado, sin causa determinada:** una corrida de pytest quedó colgada más de 8 minutos, con la JVM esperando y sin error de Spark. No se repitió en 4 corridas posteriores (3 por archivo y la suite completa).
