@@ -4,8 +4,8 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 
 | Spec | Estado | Tests locales | Databricks | Pendientes / notas |
 |---|---|---|---|---|
-| 00 Entorno | hecho (local + Databricks) | 46/46 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 9/9 OK (2026-11-01), con la versión anterior de ambos notebooks | Review hecho. **Pendiente:** volver a correr y exportar `00_setup` y `00_smoke_test`. Outputs actuales en `notebooks_executed/` |
-| 01 Profiling + arquitectura | parcial | 99/99 passed (2026-11-01) | **no ejecutado** | Notebook y `ARCHITECTURE.md` escritos; funciones corridas con Spark local sobre el CSV. Review hecho. Falta correr en Free Edition. Benchmark y ADR-010 pendientes: necesitan Silver y Gold (ver log) |
+| 00 Entorno | hecho (local + Databricks) | 99/99 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 10/11 OK, 1 inconcluso (2026-11-01) | Review hecho. Outputs en `notebooks_executed/`. 2 bajas abiertas: fixture (etapa 03) y triple evaluación del MERGE (benchmark) |
+| 01 Profiling + arquitectura | parcial | 99/99 passed (2026-11-01) | `01_data_profiling` y `00_quotes_spike` OK (2026-11-01) | Review hecho. **Pendiente, por dependencia:** benchmark, §6 de `ARCHITECTURE.md` y ADR-010 necesitan Silver y Gold (día 5 de `PLAN.md`). 8 bajas abiertas (ver log) |
 | 02 Bronze | pendiente | — | — | |
 | 03 Silver + calidad | pendiente | — | — | |
 | 04 Instrumentos | pendiente | — | — | |
@@ -141,3 +141,15 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
     - `ARCHITECTURE.md` §5.6 no tiene un escenario de volumen productivo.
     - ADR-008 generaliza desde AL30 el comportamiento del sufijo `24HS`.
 - 2026-11-01 — **Observado, sin causa determinada:** una corrida de pytest quedó colgada más de 8 minutos, con la JVM esperando y sin error de Spark. No se repitió en 4 corridas posteriores (3 por archivo y la suite completa).
+- 2026-11-01 — **Corrida en Free Edition de los notebooks corregidos.** El código de los 4 `.ipynb` es idéntico al del repo.
+  - `00_setup`: `status: SUCCESS`, sin `current_user`.
+  - `00_smoke_test`: 10/11 OK, ninguno fallido, `smoke_run_id = d96b79bc-649b-483d-b9ca-aa87e463b212`. `ALTER TABLE ... CLUSTER BY` funciona. Región `aws:us-east-2`, catálogo `workspace`. La raíz de Yahoo da 429 (`INCONCLUSO`, `Server: ATS`).
+  - `00_quotes_spike`: BYMA 16/16, data912 11/16, Yahoo 11/16 símbolos con filas. Las 48 combinaciones de proveedor y símbolo coinciden con local en filas y mediana. El modo `api` desde Databricks es viable, con 16 símbolos. — ADR-008
+  - `01_data_profiling`: las 10 celdas corren en serverless, sin errores, y los números coinciden con Spark local: 100.000 filas, 0 excluidas, 16.814 clientes con 2 o más versiones. Confirma que el código funciona en Spark Connect y Spark 4.2. — ADR-007
+  - Criterios de la etapa 01:
+    - ✅ Notebook 01 con las 10 celdas y outputs.
+    - ✅ Celda 10 con (a) y (b). ADR-007 sigue vigente.
+    - ❌ `ARCHITECTURE.md` completo: falta §6, depende del benchmark.
+    - ❌ Benchmark 1x/10x/100x: **no ejecutado**, necesita Silver y Gold.
+    - ❌ ADR-010: depende del benchmark.
+  - El email del usuario ya no está en los `.ipynb` actuales, pero sigue en el historial de git (`8aaba06`), igual que en los datos de autor de los commits.
