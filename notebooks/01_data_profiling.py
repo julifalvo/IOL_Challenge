@@ -186,10 +186,13 @@ print(f"""Definición aplicada ({config.SEGMENT_RULE_VERSION}):
 - Cortes acumulados: {[c.isoformat() for c in config.SCD2_SNAPSHOTS]}, por fecha local efectiva.
 - activity_segment con los cortes congelados: {config.ACTIVITY_SEGMENTS}.
 - preferred_channel = channel_code con más operaciones hasta el corte; desempate: operación más reciente, después alfabético.
+- Cuentan las operaciones con cliente y fecha efectiva válidos; un duplicado exacto una vez; sin IDs en conflicto.
 - Una versión nueva = cambia activity_segment o preferred_channel. dominant_asset_type y currency_profile no entran acá
   (dependen del spec 04): sumarlos solo puede agregar versiones, así que (a) es un piso.""")
 
 usable = segmentation.usable_trades(trades)
+usable_rows = usable.count()
+print(f"Filas usadas: {usable_rows:,} de {summary['rows']:,}. Excluidas según ADR-007: {summary['rows'] - usable_rows:,}")
 points = segmentation.client_points(usable)
 distribution = segmentation.versions_distribution(points)
 

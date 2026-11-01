@@ -17,6 +17,7 @@ El CSV no trae atributos de cliente. Se versionan **atributos operativos derivad
 | `dominant_asset_type` | `asset_type` modal (reglas spec 04) | Perfil inversor sin inventar datos personales |
 | `currency_profile` | ARS_ONLY / USD_ONLY / MIXED | Relevante para dolarización de cartera |
 
+- Filas que cuentan (ADR-007): toda operación con cliente y fecha efectiva válidos, incluidas las ERROR. No cuentan las CRITICAL; un duplicado exacto cuenta una vez.
 - Los cortes se **congelan** en `SEGMENT_RULE_VERSION = seg_v1` (calculados una vez y escritos en config). Recalcularlos en cada run haría que un cliente cambie de segmento sin haber cambiado su comportamiento.
 - **Sin leakage:** la versión calculada al cierre del mes M rige desde M+1 día 1. La versión inicial de un cliente nace en su primera operación con atributos calculados solo con esa operación (`activity_segment = OCASIONAL`).
 

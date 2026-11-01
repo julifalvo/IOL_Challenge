@@ -104,10 +104,12 @@ def test_segment_matrix_adds_up_to_transitions(spark):
     assert total_matrix == total_transitions
 
 
-def test_usable_trades_leave_out_rows_without_client_or_date(spark, trades_small_csv):
+def test_usable_trades_follow_the_adr_007_criteria(spark, trades_small_csv):
     from iol_pipeline import calendar
 
     raw = spark.read.option("header", True).csv(str(trades_small_csv))
     usable = segmentation.usable_trades(calendar.with_trade_dates(raw))
-    assert usable.count() == 38  # 40 filas - sin id_cliente - fecha no parseable
+    # 40 filas - 1 duplicado exacto - 2 del ID en conflicto - 1 sin id_cliente - 1 fecha no parseable
+    assert usable.count() == 35
     assert usable.where("channel_code = 'UNKNOWN'").count() == 0
+    assert usable.where("client_id = 'CLIFX000011'").count() == 1  # precio de escala anómala: ERROR, cuenta

@@ -51,8 +51,12 @@ def initial_attributes(trades: DataFrame) -> DataFrame:
 
 
 def usable_trades(df: DataFrame) -> DataFrame:
-    """Filas con cliente y fecha, listas para calcular atributos. Espera las columnas de `calendar.with_trade_dates`."""
-    return (df.where(F.col("id_cliente").isNotNull() & F.col("trade_ts_utc").isNotNull())
+    """Filas que cuentan para los atributos (ADR-007): cliente y fecha efectiva válidos, un duplicado exacto
+    una sola vez, y sin IDs con contenido en conflicto. Espera las columnas de `calendar.with_trade_dates`."""
+    unique = df.dropDuplicates(config.TRADES_CONTRACT)
+    conflicts = unique.groupBy("id_transaccion").count().where("count > 1").select("id_transaccion")
+    return (unique.join(conflicts, "id_transaccion", "left_anti")
+            .where(F.col("id_cliente").isNotNull() & F.col("effective_trade_date").isNotNull())
             .select(F.col("id_cliente").alias("client_id"), channel_code(F.col("origen")).alias("channel_code"),
                     "trade_ts_utc", "effective_trade_date"))
 

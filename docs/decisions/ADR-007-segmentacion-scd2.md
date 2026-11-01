@@ -21,6 +21,11 @@ Versionar 4 atributos **operativos derivados**, acumulados hasta cada snapshot m
 
 Así el mismo input da siempre el mismo canal, sin depender del orden de filas ni del motor (pandas/Spark). En la versión inicial es el canal de la primera operación.
 
+Filas que cuentan para los atributos: toda operación con cliente y fecha efectiva válidos.
+- Cuentan las de severidad ERROR, como un posible error de escala: la operación existió, y la actividad y el canal son válidos aunque el precio no.
+- No cuentan las filas CRITICAL, que incluyen los conflictos de ID (`DQ004`): no se sabe cuál versión es la real.
+- Un duplicado exacto cuenta una sola vez.
+
 Vigencia: la versión del cierre del mes M rige desde el día siguiente (`valid_to` exclusivo). Versión inicial desde la primera operación, con atributos de esa sola operación. Así ningún trade se asocia a un atributo calculado con información posterior.
 
 ## Alternativas
