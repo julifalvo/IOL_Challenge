@@ -10,7 +10,7 @@
    - Opciones primero: símbolo con patrón `^[A-Z]{3,5}[CV]\d{1,6}(\.\d*)?[A-Z]{0,2}$` y descripción = símbolo → OPCION (C = call, V = put; subyacente = prefijo, ej. GFG → GGAL). 295 símbolos.
    - Acciones locales: lista de `mapping/local_stocks.csv`, después de las reglas de descripción (ADR-004).
    - `asset_type` por patrones de descripción: empieza con "Cedear" → CEDEAR; contiene "Lecap/Boncap/Lt Rep Arg/Letra" → LETRA_LECAP_BONCAP; "Bono/Bonos Rep/Tesoro/Tasa Dual/Bopreal" → BONO_SOBERANO; "Pcia/Prov/Provincia/Ciudad" → BONO_SUBSOBERANO; "ON/Oblig" → ON; "Warrant" → WARRANT; resto → `NEEDS_REVIEW`.
-   - `settlement_variant`: **solo** si `currency = USD` y existe el símbolo base en ARS con la misma descripción (o mismo `underlying_key`): sufijo D → USD_MEP, C → USD_CCL. Si USD sin base ARS (ONs en dólares como YM34D, TLCOD) → USD_OTHER. ARS → ARS siempre, aunque termine en D/C.
+   - `settlement_variant`: **solo** si `currency = USD`, termina en D o C, y existe el símbolo base en ARS, con la misma descripción o el mismo tipo, o un único símbolo en ARS con la misma descripción: sufijo D → USD_MEP, C → USD_CCL. Si no → USD_OTHER. ARS → ARS siempre, aunque termine en D/C.
    - `underlying_key`: símbolo base si la variante se validó; si no, el propio símbolo.
    - `maturity_date`: regex `dd/mm/aa(aa)` en descripción.
 2. **IA** (spec 09) para `NEEDS_REVIEW` y para `issuer`, `sector`, `underlying_ticker_foreign` (CEDEARs).
@@ -29,7 +29,10 @@ Resultado → `iol_ops.instrument_mapping` → `iol_gold.dim_instrument` (SCD1, 
 - `YPFD` ARS → ACCION_LOCAL (si descripción "YPF" y regla de acciones/override), `settlement_variant=ARS`.
 - `AL30D` USD con base `AL30` ARS → USD_MEP, `underlying_key=AL30`.
 - `C` (Citigroup) ARS → CEDEAR, `settlement_variant=ARS`.
-- `YM34D` USD sin base ARS → USD_OTHER.
+- `YM34D` USD con `YM34O` ARS de igual descripción → USD_MEP, `underlying_key=YM34O`.
+- USD con dos símbolos ARS de igual descripción → USD_OTHER.
+- Override o IA que cambia el tipo → el proveedor sale del tipo nuevo.
+- Override mal escrito → falla.
 - Override pisa regla.
 - Cada símbolo del dataset tiene exactamente una fila en el mapping.
 
