@@ -17,12 +17,12 @@ Ejecutar en Free Edition respetando el espíritu de la restricción: costo cero,
 
 ## Resultado del smoke test
 - **Cómo se obtiene:** corriendo `notebooks/00_setup.py` y `notebooks/00_smoke_test.py`. El detalle queda en `iol_ops.smoke_test_results`, filtrado por `smoke_run_id`.
-- **Estado:** no ejecutado todavía.
+- **Estado:** en curso. `00_setup` corrido; `00_smoke_test` no ejecutado.
 
 | Prueba | Resultado | Fecha |
 |---|---|---|
-| Crear schema + volume | | |
-| Git folder + import de `src/` | | |
+| Crear schema + volume | Schemas: OK [MEDIDO], `SHOW SCHEMAS` de `00_setup` lista `iol_bronze`, `iol_gold`, `iol_ops`, `iol_silver`. Volume `landing`: sin verificar | 2026-11-01 |
+| Git folder + import de `src/` | OK [MEDIDO]: la celda que muestra `SHOW SCHEMAS` llama antes a `io.ensure_schemas`, importado desde `src/` | 2026-11-01 |
 | `dbutils.notebook.run` | | |
 | Egress a proveedores | ver ADR-008 | |
 | `ai_query` | ver ADR-011 | |
