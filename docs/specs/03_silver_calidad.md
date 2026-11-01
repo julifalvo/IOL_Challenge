@@ -33,6 +33,6 @@
 
 ## Criterios de aceptación
 - [ ] 100.000 filas en Silver, 0 CRITICAL.
-- [ ] Cada regla del catálogo implementada con test, salvo `DQ030` y `DQ033`, que necesitan `instrument_mapping` y pasan al spec 04.
+- [ ] Cada regla del catálogo implementada con test. `DQ030` y `DQ033` aplican desde que existe `instrument_mapping` (spec 04).
 - [ ] Columna "Observado" de `docs/quality_rules.md` completada con números del output.
 - [ ] Reejecución sin cambios en conteos ni hashes.

@@ -7,6 +7,9 @@
 - **Principal:** clasificar y enriquecer instrumentos con LLM, solo para lo que las reglas no resuelven, con validación por schema, contraste con reglas, caché por hash y accuracy medida sobre 60 símbolos etiquetados.
 - **Secundario:** resumen ejecutivo del EDA a partir de métricas agregadas, con verificación de que cada número citado existe en el input.
 
+## Alcance después de las reglas [MEDIDO, 2026-11-01]
+Las reglas y la lista de acciones de ADR-004 dejan solo 10 símbolos y 371 operaciones en `NEEDS_REVIEW`. El mayor aporte de la IA pasa a ser lo que ninguna regla puede inferir: emisor, sector y ticker del subyacente de 598 CEDEARs, más esos 10 casos.
+
 ## Por qué el principal es clasificación y no el resumen
 Está **dentro** del pipeline: mejora `dim_instrument`, el mapeo a la fuente de cotización y los cortes del análisis. El resumen es consumo; útil, pero no cambia la calidad del dato.
 

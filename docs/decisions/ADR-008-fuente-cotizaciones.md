@@ -81,6 +81,8 @@ En un activo sin sesgo la relación diaria igual se dispersa: p10 y p90 quedan e
 
 **Trade-off:** el criterio 3 pedía fuente oficial antes que agregador, y para bonos, acciones y CEDEARs en ARS gana un agregador personal porque la serie oficial no sirve como precio de mercado sin desajustar. Eso concentra el riesgo en data912. Si deja de estar disponible, los bonos soberanos quedan sin cobertura, y acciones y CEDEARs pasan a Yahoo o BYMA. Gold pasa a YELLOW (G08, G09), no a RED.
 
+**Provisional en `config.PROVIDER_RULES`,** hasta medirlo en la etapa 05: Yahoo para CEDEARs y acciones en USD, y BYMA para bonos subsoberanos, que el spike no probó.
+
 **API de IOL:** no evaluada. Requiere credenciales personales y se decidió no usarlas en este proyecto (2026-11-01). Podría ser una mejor opción si da los bonos sin ajustar; queda como mejora futura.
 
 - Modo: `api` desde Databricks: los 3 proveedores devuelven datos desde serverless [MEDIDO, 16 símbolos]. Si aparecen límites con los 1.445 símbolos, `tools/quotes_fetcher` local → Volume → `quotes_raw` con `FileReplayProvider`. Mismo contrato y misma tabla `quote_requests` en ambos modos.

@@ -84,7 +84,7 @@ erDiagram
 | price_scale_factor | multiplicador para llevar el precio del proveedor a la escala del trade (ej. 0,01 si el proveedor cotiza por 100 VN) |
 | maturity_date | parseada de descripción si existe |
 | issuer, sector, underlying_ticker_foreign | enriquecimiento IA (validado) |
-| provider, provider_symbol, mapping_status | `MAPPED`/`UNMAPPED`/`UNSUPPORTED` |
+| provider, provider_symbol, mapping_status | `UNVERIFIED` hasta validarse en la etapa 05, después `MAPPED`; `UNMAPPED` sin tipo de activo; `UNSUPPORTED` sin fuente |
 | mapping_version, updated_at | |
 
 ### `dim_client` — **SCD2**, una fila por versión
@@ -138,5 +138,5 @@ Fila de versión inicial: `valid_from` = fecha de primera operación del cliente
 | `quote_requests` | request | fetch_run_id, provider, provider_symbol, from, to, http_status, attempts, rows_returned, error, requested_at |
 | `quote_coverage` | símbolo | symbol, currency_code, asset_type, provider_symbol, trades_total, trades_eligible, matched_exact, matched_imputed, unavailable, coverage_pct, last_error |
 | `ai_runs` | invocación | ai_run_id, component, prompt_version, model, input_hash, output_json, validation_status, created_at |
-| `instrument_mapping` | símbolo | tabla editable/versionada que alimenta dim_instrument (también en `src/iol_pipeline/mapping/overrides.csv`) |
+| `instrument_mapping` | símbolo | symbol, currency_code, description_canonical, asset_type, asset_type_source, underlying_key, settlement_variant, price_scale_factor, maturity_date, issuer, sector, underlying_ticker_foreign, provider, provider_symbol, mapping_status, mapping_version, updated_at. Alimenta dim_instrument; se corrige con `src/iol_pipeline/mapping/overrides.csv` |
 | `smoke_test_results` | run de smoke test × chequeo | smoke_run_id, check, status (OK/INCONCLUSO/FAIL), detail, checked_at (TIMESTAMP UTC). Evidencia del entorno (spec 00); `MERGE` por (smoke_run_id, check) |

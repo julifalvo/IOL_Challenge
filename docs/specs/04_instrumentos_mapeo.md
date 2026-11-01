@@ -7,7 +7,8 @@
 
 ## Diseño en 3 capas (de más confiable a menos)
 1. **Reglas determinísticas** (`classify_by_rules`):
-   - Opciones primero: símbolo con patrón `^[A-Z]{3,5}[CV]\d{3,6}[A-Z]{0,2}$` y descripción = símbolo → OPCION (C = call, V = put; subyacente = prefijo, ej. GFG → GGAL). ~231 símbolos.
+   - Opciones primero: símbolo con patrón `^[A-Z]{3,5}[CV]\d{1,6}(\.\d*)?[A-Z]{0,2}$` y descripción = símbolo → OPCION (C = call, V = put; subyacente = prefijo, ej. GFG → GGAL). 295 símbolos.
+   - Acciones locales: lista de `mapping/local_stocks.csv`, después de las reglas de descripción (ADR-004).
    - `asset_type` por patrones de descripción: empieza con "Cedear" → CEDEAR; contiene "Lecap/Boncap/Lt Rep Arg/Letra" → LETRA_LECAP_BONCAP; "Bono/Bonos Rep/Tesoro/Tasa Dual/Bopreal" → BONO_SOBERANO; "Pcia/Prov/Provincia/Ciudad" → BONO_SUBSOBERANO; "ON/Oblig" → ON; "Warrant" → WARRANT; resto → `NEEDS_REVIEW`.
    - `settlement_variant`: **solo** si `currency = USD` y existe el símbolo base en ARS con la misma descripción (o mismo `underlying_key`): sufijo D → USD_MEP, C → USD_CCL. Si USD sin base ARS (ONs en dólares como YM34D, TLCOD) → USD_OTHER. ARS → ARS siempre, aunque termine en D/C.
    - `underlying_key`: símbolo base si la variante se validó; si no, el propio símbolo.
@@ -22,7 +23,7 @@ Resultado → `iol_ops.instrument_mapping` → `iol_gold.dim_instrument` (SCD1, 
 - `price_scale_factor` por (symbol, provider). El valor inicial sale de (provider, asset_type): bonos/letras cotizados por 100 VN en el proveedor → 0,01; acciones/CEDEARs → 1. **Se valida empíricamente por símbolo**, no se asume: `YPFD` y SPY tienen otra escala en BYMA y Yahoo (ADR-008). Sanity check de spec 05.
 
 ## Reglas de calidad que dependen del mapeo
-`DQ030_INSTRUMENT_UNMAPPED` y `DQ033_CURRENCY_VARIANT_MISMATCH` se implementan acá, porque necesitan `instrument_mapping`. Silver ya corrió antes en el pipeline: definir en esta etapa cómo llegan esas marcas a `quality_flags`, subiendo `RULES_VERSION` si hace falta.
+`DQ030_INSTRUMENT_UNMAPPED` y `DQ033_CURRENCY_VARIANT_MISMATCH` necesitan `instrument_mapping`. Silver lee esa tabla si existe, y el notebook 04 reaplica Silver al terminar: así las marcas no dependen del orden, y otra corrida no toca nada.
 
 ## Tests
 - `YPFD` ARS → ACCION_LOCAL (si descripción "YPF" y regla de acciones/override), `settlement_variant=ARS`.
@@ -39,6 +40,6 @@ Resultado → `iol_ops.instrument_mapping` → `iol_gold.dim_instrument` (SCD1, 
 4. `NEEDS_REVIEW` restantes (debería ser 0 después de IA + overrides).
 
 ## Criterios de aceptación
-- [ ] 1.445 símbolos mapeados, `asset_type` sin `NEEDS_REVIEW`.
+- [ ] 1.445 símbolos mapeados, `asset_type` sin `NEEDS_REVIEW`. Lo que las reglas no resuelven lo cierra la IA, en el spec 09.
 - [ ] ADR-004 documenta reglas, casos borde y cómo agregar un símbolo nuevo.
 - [ ] Tests verdes.

@@ -74,7 +74,7 @@ sys.path.insert(0, os.path.abspath("../src"))
 - **Precio de bonos por 1 VN** (AL30 ≈ 876 ARS, AL30D ≈ 0,607 USD). Las fuentes de mercado suelen cotizar por 100 VN → normalizar escala (ADR-005).
 - Sufijo D/C **no** es regla: `YPFD`, `CARC`, `C`, `BA.C`, `AMD`, `HD`, `BA37D` son ARS. 471 símbolos USD, 279 con base ARS al quitar el sufijo. Mapeo = tabla explícita (ADR-004).
 - Extremos: `T30A7` qty 1.503.210.011 a precio 0,0101 cuando la mediana del propio símbolo es 1,08 → **posible error de escala**. 13 filas con precio a ×50 o ×1/50 de la mediana de su símbolo [MEDIDO]. 8 de esas 13 son de IOLnet y las 8 tienen precio que redondea a 0,01 o 1,00 (`T30A7` es 0,0101) [MEDIDO]. Que sea un valor por defecto de carga es [HIPÓTESIS]. Outliers se evalúan sobre importe y por tipo de activo.
-- **Opciones:** ~1.824 operaciones en ~231 símbolos de opciones (`GFGC…` call / `GFGV…` put sobre GGAL, `YPFC…`), con descripción = símbolo. Son un `asset_type` propio (`OPCION`): primas muy volátiles y cobertura de cotizaciones esperable baja.
+- **Opciones:** 2.016 operaciones en 295 símbolos de opciones (`GFGC…` call / `GFGV…` put sobre GGAL, `YPFC…`, `COMC47.0AB`), con descripción = símbolo. Son un `asset_type` propio (`OPCION`): primas muy volátiles y cobertura de cotizaciones esperable baja.
 - Clientes: p50=1, p75=2, p90=3, p95=4, p99=10 operaciones; 40.841 con una sola operación. 1.741 operan por más de un canal.
 - Top 20 símbolos = 38,9% de operaciones.
 
