@@ -31,6 +31,7 @@ def test_rerun_with_the_same_file_changes_nothing(spark, schema, trades_small_cs
     assert first["status"] == second["status"] == "SUCCESS"
     assert _counters(first) == {"rows_read": 40, "rows_inserted": 39, "rows_already_present": 0, "rows_duplicate_in_file": 1, "rows_conflict": 1}
     assert _counters(second) == {"rows_read": 40, "rows_inserted": 0, "rows_already_present": 39, "rows_duplicate_in_file": 1, "rows_conflict": 0}
+    assert first["duplicate_row_numbers"] == second["duplicate_row_numbers"] == [16]
     assert _table_fingerprint(spark, trades) == after_first  # ni filas ni linaje: conserva la primera corrida
     assert spark.table(runs).count() == 2  # el registro sí crece: una fila por corrida
 
@@ -96,15 +97,82 @@ def test_first_file_with_bad_schema_does_not_create_the_table(spark, schema, tmp
     assert not spark.catalog.tableExists(trades)
 
 
-def test_malformed_file_records_failed_and_raises(spark, schema, tmp_path):
+def test_line_with_extra_fields_enters_and_does_not_stop_the_others(spark, schema, tmp_path):
     trades, runs = _tables(schema)
-    bad = tmp_path / "roto.csv"
-    bad.write_text(",".join(config.TRADES_CONTRACT) + "\n" + ",".join(["x"] * 12) + "\n", encoding="utf-8")
+    good = [",".join(["x"] * 8 + [f"TXN{i}", "API"]) for i in range(3)]
+    path = tmp_path / "una_mala.csv"
+    path.write_text("\n".join([",".join(config.TRADES_CONTRACT), good[0], good[1] + ",de más", good[2]]) + "\n", encoding="utf-8")
 
-    with pytest.raises(ValueError, match="Línea 2"):
+    run = bronze.ingest_trades(spark, str(path), trades, runs)
+
+    assert run["status"] == "SUCCESS" and run["rows_inserted"] == 3
+    malformed = spark.table(trades).where("extra_fields IS NOT NULL").collect()
+    assert [(r.id_transaccion, r.origen, r.extra_fields, r.source_row_number) for r in malformed] == [("TXN1", "API", '["de más"]', 2)]
+
+
+@pytest.mark.parametrize(("name", "content", "expected"), [
+    ("comilla", (",".join(config.TRADES_CONTRACT) + "\n\"x" + ",y" * 9 + "\n").encode("utf-8"), "unexpected end of data"),
+    ("codificacion", (",".join(config.TRADES_CONTRACT) + "\nDescripción" + ",y" * 9 + "\n").encode("latin-1"), "codec"),
+])
+def test_unreadable_file_records_failed_and_raises(spark, schema, tmp_path, name, content, expected):
+    trades, runs = _tables(schema)
+    bad = tmp_path / f"{name}.csv"
+    bad.write_bytes(content)
+
+    with pytest.raises(Exception, match=expected):
         bronze.ingest_trades(spark, str(bad), trades, runs)
 
     recorded = spark.table(runs).first()
     assert recorded.status == "FAILED"
     assert recorded.source_file_hash is not None and recorded.error
     assert not spark.catalog.tableExists(trades)
+
+
+def test_file_without_rows_fails_empty_and_writes_nothing(spark, schema, tmp_path):
+    trades, runs = _tables(schema)
+    header_only = tmp_path / "solo_header.csv"
+    header_only.write_text(",".join(config.TRADES_CONTRACT) + "\n", encoding="utf-8")
+
+    run = bronze.ingest_trades(spark, str(header_only), trades, runs)
+
+    assert run["status"] == "FAILED_EMPTY"
+    assert not spark.catalog.tableExists(trades)
+    assert spark.table(runs).first().status == "FAILED_EMPTY"
+
+
+def test_failure_after_the_merge_still_records_what_was_written(spark, schema, trades_small_csv, monkeypatch):
+    trades, runs = _tables(schema)
+
+    def broken_stats(*args):
+        raise ValueError("no cuadra (simulado)")
+
+    monkeypatch.setattr(bronze, "ingestion_stats", broken_stats)
+    with pytest.raises(ValueError, match="simulado"):
+        bronze.ingest_trades(spark, str(trades_small_csv), trades, runs)
+
+    recorded = spark.table(runs).first()
+    assert recorded.status == "FAILED"
+    assert recorded.rows_inserted == 39 == spark.table(trades).count()
+
+
+def test_lost_run_record_is_detected_as_an_orphan(spark, schema, trades_small_csv, monkeypatch):
+    trades, runs = _tables(schema)
+    assert bronze.orphan_ingestion_runs(spark, trades, runs) == []  # todavía no hay nada
+
+    with monkeypatch.context() as patch:
+        def broken_record(*args):
+            raise RuntimeError("falla al registrar (simulado)")
+
+        patch.setattr(bronze, "_record_run", broken_record)
+        with pytest.raises(RuntimeError, match="simulado"):
+            bronze.ingest_trades(spark, str(trades_small_csv), trades, runs)
+
+    assert len(bronze.orphan_ingestion_runs(spark, trades, runs)) == 1  # sin tabla de corridas
+    bronze.ingest_trades(spark, str(trades_small_csv), trades, runs)
+    assert len(bronze.orphan_ingestion_runs(spark, trades, runs)) == 1  # el reintento no lo tapa
+
+
+def test_recorded_runs_are_not_orphans(spark, schema, trades_small_csv):
+    trades, runs = _tables(schema)
+    bronze.ingest_trades(spark, str(trades_small_csv), trades, runs)
+    assert bronze.orphan_ingestion_runs(spark, trades, runs) == []

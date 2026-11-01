@@ -14,7 +14,7 @@ INGESTED_AT = datetime(2026, 11, 1, tzinfo=timezone.utc)
 
 
 def _lineage(spark, rows):
-    return bronze.add_lineage(spark, [tuple(r) for r in rows], "/x.csv", "fh", "run1", INGESTED_AT)
+    return bronze.add_lineage(spark, [(*r, None) for r in rows], "/x.csv", "fh", "run1", INGESTED_AT)
 
 
 def _write(tmp_path, *lines):
@@ -39,19 +39,19 @@ def test_read_keeps_everything_as_text(tmp_path):
 
 def test_read_fills_missing_trailing_fields_with_empty(tmp_path):
     columns, rows = bronze.read_trades_csv(_write(tmp_path, HEADER, "2026-01-05T14:10:00.000Z,Compra"))
-    assert len(rows[0]) == len(columns)
+    assert len(rows[0]) == len(columns) + 1  # + extra_fields
+    assert rows[0][-1] is None
     assert dict(zip(columns, rows[0]))["origen"] == ""
 
 
-def test_read_fails_on_a_later_line_with_too_many_fields(tmp_path):
-    with pytest.raises(ValueError, match="Línea 3"):
-        bronze.read_trades_csv(_write(tmp_path, HEADER, ",".join(ROW), ",".join(ROW + ["de más"])))
-
-
-def test_read_fails_if_the_first_row_has_too_many_fields(tmp_path):
-    # pandas no falla acá: usa las primeras columnas como índice y corre las demás, sin error (ADR-002).
-    with pytest.raises(ValueError, match="Línea 2"):
-        bronze.read_trades_csv(_write(tmp_path, HEADER, ",".join(ROW + ["de más"]), ",".join(ROW + ["de más"])))
+@pytest.mark.parametrize("position", [0, 1])  # 0: con pandas, en la primera fila las columnas se corren sin error (ADR-002)
+def test_read_keeps_extra_fields_without_shifting_columns(tmp_path, position):
+    lines = [",".join(ROW), ",".join(ROW)]
+    lines[position] = ",".join(ROW + ["de más", "otro"])
+    columns, rows = bronze.read_trades_csv(_write(tmp_path, HEADER, *lines))
+    assert rows[position][:len(columns)] == tuple(ROW)
+    assert rows[position][-1] == '["de más", "otro"]'
+    assert rows[1 - position][-1] is None
 
 
 def test_read_ignores_blank_lines_and_a_utf8_bom(tmp_path):
@@ -59,7 +59,7 @@ def test_read_ignores_blank_lines_and_a_utf8_bom(tmp_path):
     path.write_bytes((HEADER + "\n\n" + ",".join(ROW) + "\n\n").encode("utf-8-sig"))
     columns, rows = bronze.read_trades_csv(str(path))
     assert columns == config.TRADES_CONTRACT
-    assert rows == [tuple(ROW)]
+    assert rows == [(*ROW, None)]
 
 
 def test_read_keeps_quoted_commas(trades_small_csv):
@@ -92,6 +92,12 @@ def test_hash_is_stable_and_changes_with_any_column(spark):
         assert _hash(spark, changed) != base, config.TRADES_CONTRACT[i]
 
 
+def test_extra_fields_change_the_hash_and_null_does_not(spark):
+    with_extra = bronze.add_lineage(spark, [(*ROW, '["de más"]')], "/x.csv", "fh", "run1", INGESTED_AT).first()
+    assert with_extra.extra_fields == '["de más"]'
+    assert with_extra.record_hash != _hash(spark, ROW)
+
+
 def test_hash_does_not_confuse_values_moved_between_columns(spark):
     a, b = list(ROW), list(ROW)
     a[2], a[3] = "", "CLI1"
@@ -112,6 +118,13 @@ def test_stage_keeps_first_exact_duplicate_and_every_version(spark):
     other_version[7] = "999"
     staged = bronze.stage_for_merge(_lineage(spark, [ROW, ROW, other_version])).orderBy("source_row_number").collect()
     assert [r.source_row_number for r in staged] == [1, 3]
+
+
+def test_duplicate_row_numbers_list_only_the_discarded_rows(spark):
+    other_version = list(ROW)
+    other_version[7] = "999"
+    assert bronze.duplicate_row_numbers(_lineage(spark, [ROW, other_version, ROW, ROW])) == [3, 4]
+    assert bronze.duplicate_row_numbers(_lineage(spark, [ROW, other_version])) == []
 
 
 def test_conflicts_in_the_same_file_when_table_does_not_exist(spark, schema):
