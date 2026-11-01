@@ -141,8 +141,10 @@ failed = [r["check"] for r in results if r["status"] == "FAIL"]
 inconclusive = [r["check"] for r in results if r["status"] == "INCONCLUSO"]
 print(f"{len(results) - len(failed) - len(inconclusive)}/{len(results)} OK · "
       f"INCONCLUSO: {inconclusive or 'ninguno'} · FAIL: {failed or 'ninguno'}")
+status = smoke.run_status(results)
+print("status:", status)
 
 # COMMAND ----------
 
-dbutils.notebook.exit(json.dumps({"status": "SUCCESS", "smoke_run_id": SMOKE_RUN_ID, "failed_checks": failed,
+dbutils.notebook.exit(json.dumps({"status": status, "smoke_run_id": SMOKE_RUN_ID, "failed_checks": failed,
                                  "inconclusive_checks": inconclusive}))

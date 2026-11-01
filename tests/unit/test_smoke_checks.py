@@ -51,6 +51,24 @@ def test_timeout_is_passed_to_get():
     assert seen["timeout"] == 7
 
 
+@pytest.mark.parametrize(("statuses", "expected"), [
+    (["OK", "OK"], "SUCCESS"),
+    (["OK", "INCONCLUSO"], "SUCCESS"),
+    (["OK", "INCONCLUSO", "FAIL"], "FAILED"),
+])
+def test_run_status_fails_only_on_fail(statuses, expected):
+    assert smoke.run_status([{"status": s} for s in statuses]) == expected
+
+
+@pytest.mark.parametrize(("contract_ok", "expected"), [
+    ({"a.csv": True}, "SUCCESS"),
+    ({}, "FAILED"),  # falta el CSV
+    ({"a.csv": True, "b.csv": False}, "FAILED"),
+])
+def test_setup_status_needs_a_csv_that_meets_the_contract(contract_ok, expected):
+    assert smoke.setup_status(contract_ok) == expected
+
+
 def test_candidate_providers_of_adr_008_are_checked():
     assert set(config.SMOKE_EGRESS_URLS) == {"iol_api", "byma_open_data", "data912", "yahoo_finance"}
     assert all(u.startswith("https://") for u in config.SMOKE_EGRESS_URLS.values())

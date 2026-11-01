@@ -27,3 +27,13 @@ def check_egress(urls: dict[str, str], get: Callable[..., Any], timeout_s: float
         results.append({"check": f"egress:{name}", "status": status, "detail": f"{url} -> {detail}",
                         "checked_at": checked_at})
     return results
+
+
+def run_status(results: list[dict[str, str]]) -> str:
+    """FAILED si falló algún chequeo. INCONCLUSO no cuenta como falla: queda a la vista para revisarlo."""
+    return "FAILED" if any(r["status"] == "FAIL" for r in results) else "SUCCESS"
+
+
+def setup_status(contract_ok: dict[str, bool]) -> str:
+    """SUCCESS solo si hay al menos un CSV en landing y todos cumplen el contrato."""
+    return "SUCCESS" if contract_ok and all(contract_ok.values()) else "FAILED"

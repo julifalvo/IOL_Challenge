@@ -18,7 +18,7 @@ import sys
 import uuid
 
 sys.path.insert(0, os.path.abspath("../src"))
-from iol_pipeline import config, io
+from iol_pipeline import config, io, smoke
 
 RUN_ID = dbutils.widgets.get("pipeline_run_id") or str(uuid.uuid4())
 CATALOG = dbutils.widgets.get("catalog")
@@ -68,18 +68,22 @@ csv_files = [f for f in dbutils.fs.ls(trades_dir) if f.name.lower().endswith(".c
 
 if not csv_files:
     print(f"CSV_MISSING: subir el CSV original a {trades_dir}/ (Catalog Explorer > Volumes > Upload) y volver a correr.")
+contract_ok = {}
 for f in csv_files:
     columns = spark.read.option("header", True).csv(f.path).columns
-    contract_ok = columns == config.TRADES_CONTRACT
-    print(f"{f.name}: {f.size:,} bytes · columnas = contrato {config.SCHEMA_VERSION}: {contract_ok}")
-    if not contract_ok:
+    contract_ok[f.name] = columns == config.TRADES_CONTRACT
+    print(f"{f.name}: {f.size:,} bytes · columnas = contrato {config.SCHEMA_VERSION}: {contract_ok[f.name]}")
+    if not contract_ok[f.name]:
         print("  columnas leídas:", columns)
+
+status = smoke.setup_status(contract_ok)
+print("status:", status)
 
 # COMMAND ----------
 
 dbutils.notebook.exit(json.dumps({
-    "status": "SUCCESS",
+    "status": status,
     "pipeline_run_id": RUN_ID,
     "schemas": created,
-    "csv_files": [f.name for f in csv_files],
+    "csv_contract_ok": contract_ok,
 }))
