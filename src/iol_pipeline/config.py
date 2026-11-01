@@ -77,8 +77,34 @@ DATA_CUTOFF = date(2026, 3, 13)
 
 # --- Calidad (docs/quality_rules.md) ---------------------------------------------
 SEVERITY_RANK = {"OK": 0, "INFO": 0, "WARNING": 1, "ERROR": 2, "CRITICAL": 3}
+RULE_SEVERITY = {  # DQ021 baja a WARNING en OPCION (quality.rule_severity)
+    "DQ002_REQUIRED_NULL": "CRITICAL",
+    "DQ003_TS_UNPARSEABLE": "CRITICAL",
+    "DQ004_ID_CONFLICT": "CRITICAL",
+    "DQ005_NUMERIC_UNPARSEABLE": "CRITICAL",
+    "DQ006_NON_POSITIVE": "ERROR",
+    "DQ007_DOMAIN_INVALID": "ERROR",
+    "DQ008_MALFORMED_ROW": "CRITICAL",
+    "DQ010_SATURDAY": "WARNING",
+    "DQ011_SUNDAY": "ERROR",
+    "DQ012_MARKET_HOLIDAY": "ERROR",
+    "DQ013_OUTSIDE_SESSION": "INFO",
+    "DQ014_OUTSIDE_CALENDAR": "ERROR",
+    "DQ020_EXTREME_AMOUNT": "WARNING",
+    "DQ021_POSSIBLE_SCALE_ERROR": "ERROR",
+    "DQ022_EXTREME_QTY": "WARNING",
+    "DQ031_SYMBOL_MULTI_DESC": "INFO",
+    "DQ032_AFTER_MATURITY": "ERROR",
+}
+DECIMAL_PARSE_TYPE = "decimal(38,8)"
+QTY_TYPE = "decimal(20,0)"
+PRICE_TYPE = "decimal(24,8)"
+AMOUNT_TYPE = "decimal(38,8)"
+EXAMPLE_HASH_CHARS = 12
+EVENT_EXAMPLES = 9
 QUALITY_PARAMS = {
     "robust_z_threshold": 3.5,         # DQ020, Iglewicz-Hoaglin
+    "robust_z_constant": 0.6745,       # DQ020, Iglewicz-Hoaglin
     "scale_ratio_low": 0.02,           # DQ021
     "scale_ratio_high": 50.0,          # DQ021
     "extreme_qty_quantile": 0.999,     # DQ022
