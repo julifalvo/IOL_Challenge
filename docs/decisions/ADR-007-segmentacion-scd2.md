@@ -31,5 +31,29 @@ Vigencia: la versión del cierre del mes M rige desde el día siguiente (`valid_
 | Snapshot diario | Correcto en producción; a 3 meses el mensual es suficiente para demostrar y más legible |
 | Segmentar por importe | Mezcla monedas y escalas de VN; requiere FX |
 
+## Viabilidad [MEDIDO, Spark local sobre el CSV completo, 2026-11-01; corrida en Free Edition pendiente]
+Celda 10 del notebook 01. Una versión nueva = cambia `activity_segment` o `preferred_channel`. Los otros 2 atributos no entran, así que es un piso.
+
+| Versiones | Clientes |
+|---:|---:|
+| 1 | 40.841 |
+| 2 | 14.435 |
+| 3 | 2.312 |
+| 4 | 67 |
+
+| Transición | Clientes en ambos puntos | Cambian de canal | Cambian de segmento |
+|---|---:|---:|---:|
+| inicial → 31/01 | 31.798 | 458 | 7.480 |
+| 31/01 → 28/02 | 31.798 | 401 | 5.025 |
+| 28/02 → 13/03 | 49.724 | 277 | 3.306 |
+| inicial → 28/02 (nacidos después del 31/01) | 17.926 | 147 | 2.626 |
+| inicial → 13/03 (nacidos después del 28/02) | 7.931 | 34 | 729 |
+
+**Lectura:** se cumple el criterio del spec 01: (b) no da 0 y (a) no da poco. ADR-007 sigue vigente. Dos límites:
+- **(a) es casi mecánico.** Los 16.814 clientes con 2 o más versiones son exactamente los que tienen 2 o más operaciones: la versión inicial siempre es OCASIONAL y el segmento se recalcula sobre un acumulado.
+- **`activity_segment` solo sube.** Al ser acumulado, la matriz no tiene transiciones hacia abajo. Es esperable con esta definición, y no mide si un cliente se enfrió.
+
+Por eso la demostración del notebook 06 debe priorizar un cliente con cambio de canal, que es el cambio que no sale de la acumulación.
+
 ## Evidencia `[MEDIR]`
 Matriz de transición ene→feb→mar y cliente demostrado en notebook 06.
