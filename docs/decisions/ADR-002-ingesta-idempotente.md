@@ -10,7 +10,7 @@ La trazabilidad es requisito de negocio. Reprocesar el mismo archivo no puede du
 - Bronze guarda columnas originales **como texto** + linaje (`record_hash`, `source_file_hash`, `source_row_number`, `ingestion_run_id`).
 - `MERGE ... WHEN NOT MATCHED THEN INSERT` con clave `(id_transaccion, record_hash)`. Nunca UPDATE en Bronze.
 - Conflictos (mismo ID, distinto hash) quedan ambos en Bronze y se marcan `DQ004` en Silver.
-- `iol_ops.ingestion_runs` cuadra `read = inserted + already_present + conflict`.
+- `iol_ops.ingestion_runs` cuadra `read = inserted + already_present + duplicate_in_file`. `conflict` es un subconjunto de `inserted`: las filas insertadas en la corrida cuyo ID ya tenía otra versión, en la tabla o antes en el mismo archivo.
 
 ## Alternativas
 | Opción | Por qué no |

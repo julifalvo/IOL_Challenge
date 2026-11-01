@@ -46,4 +46,4 @@ Umbrales parametrizados en `src/iol_pipeline/config.py` (`QUALITY_PARAMS`), vers
 
 - `count(bronze.trades_raw distinct id+hash) == count(silver.trades) == count(gold.fact_trades) == count(gold.fact_trade_market)`
 - Toda fila con `quality_status != 'OK'` tiene ≥1 flag; toda fila con flags no-INFO tiene ≥1 evento.
-- Suma de `rows_inserted + rows_already_present + rows_conflict == rows_read` en cada `ingestion_runs`.
+- `rows_inserted + rows_already_present + rows_duplicate_in_file == rows_read` en cada `ingestion_runs`. `rows_conflict` es un subconjunto de `rows_inserted` (ADR-002).

@@ -24,6 +24,8 @@ WHEN NOT MATCHED THEN INSERT *
 ## `iol_ops.ingestion_runs`
 `rows_read, rows_inserted, rows_already_present, rows_conflict, rows_duplicate_in_file, status (SUCCESS/FAILED_SCHEMA/FAILED), source_file, source_file_hash, started_at, ended_at`. Cálculo de inserted/present con anti-join previo al MERGE (o `operationMetrics` del MERGE vía `DESCRIBE HISTORY`).
 
+**Invariante (ADR-002):** `read = inserted + already_present + duplicate_in_file`. `conflict` es un subconjunto de `inserted`: las filas insertadas en la corrida cuyo ID ya tenía otra versión, en la tabla o antes en el mismo archivo.
+
 ## Archivos
 `src/iol_pipeline/bronze.py` (`read_trades_csv`, `add_lineage`, `stage_for_merge`, `merge_bronze`, `ingestion_stats`), `notebooks/02_ingest_bronze.py`, `tests/unit/test_bronze.py`, `tests/integration/test_idempotency.py`.
 
@@ -31,6 +33,7 @@ WHEN NOT MATCHED THEN INSERT *
 - Hash estable ante el mismo input; cambia si cambia cualquier columna.
 - Correr ingesta 2 veces con fixture → `count` igual, segunda corrida `rows_inserted=0`.
 - Fixture con ID repetido mismo contenido → 1 fila; distinto contenido → 2 filas + `rows_conflict=1`.
+- Contadores con `trades_small.csv`, 1ra corrida: read 40, inserted 39, already_present 0, duplicate_in_file 1, conflict 1. 2da corrida: read 40, inserted 0, already_present 39, duplicate_in_file 1, conflict 0.
 - Esquema con columna faltante → `FAILED_SCHEMA`, tabla intacta.
 
 ## Criterios de aceptación
