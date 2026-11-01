@@ -93,8 +93,10 @@ RULE_SEVERITY = {  # DQ021 baja a WARNING en OPCION (quality.rule_severity)
     "DQ020_EXTREME_AMOUNT": "WARNING",
     "DQ021_POSSIBLE_SCALE_ERROR": "ERROR",
     "DQ022_EXTREME_QTY": "WARNING",
+    "DQ030_INSTRUMENT_UNMAPPED": "WARNING",
     "DQ031_SYMBOL_MULTI_DESC": "INFO",
     "DQ032_AFTER_MATURITY": "ERROR",
+    "DQ033_CURRENCY_VARIANT_MISMATCH": "ERROR",
 }
 DECIMAL_PARSE_TYPE = "decimal(38,18)"  # para detectar si convertir a QTY_TYPE o PRICE_TYPE cambiaría el dato
 QTY_TYPE = "decimal(20,0)"
@@ -135,6 +137,27 @@ SMOKE_CHILD_TIMEOUT_S = 60
 SMOKE_DETAIL_MAX_CHARS = 500  # lo que se guarda en smoke_test_results
 SMOKE_PRINT_MAX_CHARS = 300   # lo que se imprime en el output del notebook
 SMOKE_ERROR_MAX_CHARS = 200   # mensaje de una excepción de egress
+
+# --- Instrumentos y proveedores (ADR-004, ADR-005, ADR-008) ------------------------
+OPTION_UNDERLYING = {  # prefijo del símbolo de la opción -> acción subyacente
+    "ALU": "ALUA", "BBA": "BBAR", "BHI": "BHIP", "BMA": "BMA", "BYM": "BYMA", "CEP": "CEPU", "COM": "COME", "CRE": "CRES",
+    "EDN": "EDN", "GFG": "GGAL", "MET": "METR", "PAM": "PAMP", "TGN": "TGNO4", "TGS": "TGSU2", "TRA": "TRAN", "TXA": "TXAR", "YPF": "YPFD",
+}
+# (asset_type, es USD; None = cualquiera, proveedor). Lo marcado como provisional no está decidido en ADR-008.
+PROVIDER_RULES = [
+    ("BONO_SOBERANO", None, "data912"),
+    ("ACCION_LOCAL", False, "data912"),
+    ("ACCION_LOCAL", True, "yahoo"),  # provisional
+    ("CEDEAR", False, "data912"),
+    ("CEDEAR", True, "yahoo"),  # provisional
+    ("LETRA_LECAP_BONCAP", None, "byma_open_data"),
+    ("ON", None, "byma_open_data"),
+    ("BONO_SUBSOBERANO", None, "byma_open_data"),  # provisional
+]
+ASSET_TYPES_PER_100_NOMINAL = ("BONO_SOBERANO", "BONO_SUBSOBERANO", "LETRA_LECAP_BONCAP", "ON")
+PER_100_NOMINAL_FACTOR = 0.01  # valor inicial; la etapa 05 lo valida por símbolo
+BYMA_SYMBOL_SUFFIX = " 24HS"
+YAHOO_SYMBOL_SUFFIX = ".BA"
 
 # --- Segmentación SCD2 (ADR-007) -------------------------------------------------
 # Cortes congelados en seg_v1 a partir de p75/p90-p95/p99 de ops por cliente.
