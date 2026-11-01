@@ -119,7 +119,7 @@ py -3.11 -m venv .venv
 python -m pip install -r requirements-dev.txt        # con el venv activado
 
 pytest -q -rA                      # unit + integration; -rA muestra PASSED/SKIPPED por test
-pytest -q -m "not integration"      # sin los de integración; la suite completa tarda ~18 min
+pytest -q -m "not integration"      # sin los de integración; la suite completa tarda ~25 min
 
 # Saltear A PROPÓSITO los tests que usan Spark (p. ej. sin JDK a mano). Solo el valor "1" saltea.
 $env:IOL_SKIP_SPARK_TESTS = "1"; pytest -q -rA     # -> SKIPPED "salteados deliberadamente"
