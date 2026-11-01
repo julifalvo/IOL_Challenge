@@ -122,6 +122,12 @@ QUOTES_FROM = date(2025, 12, 15)
 QUOTES_TO = DATA_CUTOFF
 HTTP_TIMEOUT_S = 10
 HTTP_MAX_RETRIES = 3
+HTTP_BACKOFF_BASE_S = 1.0
+HTTP_BACKOFF_JITTER_S = 0.5
+QUOTE_PAUSE_S = 1.5  # entre pedidos a un mismo proveedor
+DATA912_KIND_BY_TYPE = {  # dónde está el histórico de cada tipo de activo en data912
+    "CEDEAR": "cedears", "ACCION_LOCAL": "stocks", "BONO_SOBERANO": "bonds", "BONO_SUBSOBERANO": "bonds", "LETRA_LECAP_BONCAP": "bonds", "ON": "bonds",
+}
 
 # --- Smoke test de entorno (spec 00; resultados en ADR-001/008/011) ----------------
 # Raíz de cada proveedor candidato de ADR-008: solo se prueba si el host es alcanzable.

@@ -13,12 +13,13 @@ import statistics
 import sys
 import time
 from collections.abc import Callable
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 from iol_pipeline import config
+from iol_pipeline.quotes import _epoch, parse_byma, parse_data912, parse_yahoo
 
 SYMBOLS = [
     "AL30", "AL30D", "AL30C", "AAPL", "AAPLD", "YPFD", "T30J6", "YM34D",  # spec 05
@@ -26,44 +27,7 @@ SYMBOLS = [
 ]
 DATA912_KINDS = ("bonds", "cedears", "stocks")
 HEADERS = {"User-Agent": "Mozilla/5.0"}
-MARKET_TZ = timezone(timedelta(hours=-3))  # Argentina no tiene horario de verano
-PAUSE_S = 1.5
-
-
-def _in_range(day: date, start: date, end: date) -> bool:
-    return start <= day <= end
-
-
-def _epoch(day: date) -> int:
-    return int(datetime(day.year, day.month, day.day, tzinfo=timezone.utc).timestamp())
-
-
-def parse_data912(payload: Any, start: date, end: date) -> list[dict]:
-    """Lista de filas. Un símbolo que no es de ese tipo de instrumento devuelve otra cosa, con HTTP 200."""
-    if not isinstance(payload, list):
-        return []
-    rows = [{"date": date.fromisoformat(r["date"]), "open": r.get("o"), "high": r.get("h"), "low": r.get("l"), "close": r.get("c")}
-            for r in payload]
-    return [r for r in rows if _in_range(r["date"], start, end)]
-
-
-def parse_byma(payload: dict, start: date, end: date) -> list[dict]:
-    """Series paralelas con epoch: {"s": "ok", "t": [...], "o": [...], ...}. Sin datos: {"s": "no_data"}."""
-    if payload.get("s") != "ok":
-        return []
-    rows = [{"date": datetime.fromtimestamp(t, MARKET_TZ).date(), "open": o, "high": h, "low": l, "close": c}
-            for t, o, h, l, c in zip(payload["t"], payload["o"], payload["h"], payload["l"], payload["c"])]
-    return [r for r in rows if _in_range(r["date"], start, end)]
-
-
-def parse_yahoo(payload: dict, start: date, end: date) -> list[dict]:
-    result = (payload.get("chart", {}).get("result") or [None])[0]
-    if not result or "timestamp" not in result:
-        return []
-    quote = result["indicators"]["quote"][0]
-    rows = [{"date": datetime.fromtimestamp(t, MARKET_TZ).date(), "open": o, "high": h, "low": l, "close": c}
-            for t, o, h, l, c in zip(result["timestamp"], quote["open"], quote["high"], quote["low"], quote["close"])]
-    return [r for r in rows if _in_range(r["date"], start, end) and r["close"] is not None]
+PAUSE_S = config.QUOTE_PAUSE_S
 
 
 def fetch_data912(symbol: str, get: Callable[..., Any], start: date, end: date) -> tuple[str, list[dict]]:
