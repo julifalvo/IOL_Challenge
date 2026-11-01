@@ -10,6 +10,7 @@
 
 dbutils.widgets.text("pipeline_run_id", "")
 dbutils.widgets.text("catalog", "workspace")
+dbutils.widgets.dropdown("demo_rerun", "true", ["true", "false"])
 
 import json
 import os
@@ -33,14 +34,16 @@ events_table = io.table_name("ops", "quality_events", catalog=CATALOG)
 
 # MAGIC %md
 # MAGIC ## Corrida
-# MAGIC Se corre dos veces: la segunda tiene que dar 0 filas insertadas, 0 actualizadas y 0 eventos nuevos.
+# MAGIC `demo_rerun = true` la corre dos veces: la segunda tiene que dar 0 filas insertadas, 0 actualizadas y 0 eventos tocados. El orquestador la corre una vez.
 
 # COMMAND ----------
 
 first = silver.run_silver(spark, bronze_table, silver_table, baselines_table, events_table, RUN_ID)
-second = silver.run_silver(spark, bronze_table, silver_table, baselines_table, events_table, RUN_ID)
 print("1ra corrida:", first)
-print("2da corrida:", second)
+second = None
+if dbutils.widgets.get("demo_rerun") == "true":
+    second = silver.run_silver(spark, bronze_table, silver_table, baselines_table, events_table, RUN_ID)
+    print("2da corrida:", second)
 
 # COMMAND ----------
 
@@ -83,13 +86,10 @@ print("Reconciliación:", "OK" if reconciled else "CON DIFERENCIAS")
 
 # COMMAND ----------
 
-from pyspark.sql import functions as F
-
-display(spark.table(events_table).where(F.col("rule_code").isin("DQ010_SATURDAY", "DQ020_EXTREME_AMOUNT", "DQ021_POSSIBLE_SCALE_ERROR"))
-        .select("rule_code", "severity", "details_json").orderBy("rule_code", "details_json").limit(config.EVENT_EXAMPLES))
+display(silver.event_examples(spark.table(events_table)))
 
 # COMMAND ----------
 
-idempotent = second["silver_inserted"] == second["silver_updated"] == second["events_inserted"] == 0
+idempotent = second is None or second["silver_inserted"] == second["silver_updated"] == second["events_inserted"] == second["events_updated"] == 0
 ok = reconciled and idempotent
 dbutils.notebook.exit(json.dumps({"status": "SUCCESS" if ok else "FAILED", "pipeline_run_id": RUN_ID, "rows_out": check["silver_rows"]}))
