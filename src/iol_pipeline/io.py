@@ -43,6 +43,16 @@ def ensure_schemas(spark: SparkSession, catalog: str | None = None) -> list[str]
     return created
 
 
+def _ensure_target(spark: SparkSession, df: DataFrame, target: str) -> None:
+    """Crea `target` vacío si no existe. Falla si `df` trae columnas que `target` no tiene: `INSERT *` las ignoraría sin error."""
+    if not spark.catalog.tableExists(target):
+        df.limit(0).write.format("delta").saveAsTable(target)
+    target_columns = {c.lower() for c in spark.table(target).columns}
+    extra = [c for c in df.columns if c.lower() not in target_columns]
+    if extra:
+        raise ValueError(f"Columnas que {target} no tiene: {extra}; no se escribe")
+
+
 def write_delta_merge(spark: SparkSession, df: DataFrame, target: str, keys: list[str]) -> dict[str, int]:
     """Inserta en `target` las filas de `df` cuya clave no existe todavía (ADR-002).
 
@@ -66,13 +76,7 @@ def write_delta_merge(spark: SparkSession, df: DataFrame, target: str, keys: lis
     if duplicated:
         raise ValueError(f"{duplicated} filas repiten la clave {keys} en el origen; no se escribe {target}")
 
-    if not spark.catalog.tableExists(target):
-        df.limit(0).write.format("delta").saveAsTable(target)
-
-    target_columns = {c.lower() for c in spark.table(target).columns}
-    extra = [c for c in df.columns if c.lower() not in target_columns]
-    if extra:
-        raise ValueError(f"Columnas que {target} no tiene: {extra}; no se escribe")
+    _ensure_target(spark, df, target)
 
     view = f"_merge_src_{uuid.uuid4().hex}"
     df.createOrReplaceTempView(view)
@@ -85,3 +89,24 @@ def write_delta_merge(spark: SparkSession, df: DataFrame, target: str, keys: lis
 
     return {"rows_source": rows_source, "rows_inserted": rows_inserted,
             "rows_already_present": rows_source - rows_inserted}
+
+
+def write_delta_upsert(spark: SparkSession, df: DataFrame, target: str, keys: list[str], compare: list[str]) -> dict[str, int]:
+    """Inserta lo nuevo y actualiza una fila solo si cambia alguna columna de `compare`.
+
+    Reejecutar con el mismo input no toca nada, ni siquiera las columnas de `df` que no están en `compare`,
+    como la corrida o la fecha de proceso. Las claves se comparan con `<=>`. No borra.
+    """
+    if not keys or not compare:
+        raise ValueError("write_delta_upsert necesita claves y columnas a comparar")
+    _ensure_target(spark, df, target)
+    view = f"_upsert_src_{uuid.uuid4().hex}"
+    df.createOrReplaceTempView(view)
+    try:
+        on = " AND ".join(f"t.`{k}` <=> s.`{k}`" for k in keys)
+        same = " AND ".join(f"t.`{c}` <=> s.`{c}`" for c in compare)
+        result = spark.sql(f"MERGE INTO {target} t USING {view} s ON {on} "
+                           f"WHEN MATCHED AND NOT ({same}) THEN UPDATE SET * WHEN NOT MATCHED THEN INSERT *").first()
+    finally:
+        spark.catalog.dropTempView(view)
+    return {"rows_inserted": int(result["num_inserted_rows"]), "rows_updated": int(result["num_updated_rows"])}

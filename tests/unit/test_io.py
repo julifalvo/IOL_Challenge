@@ -102,6 +102,39 @@ def test_merge_rejects_columns_the_target_does_not_have(spark, schema):
     assert "extra" not in spark.table(target).columns
 
 
+UPSERT = "k string, flag string, run string"
+
+
+def test_upsert_inserts_updates_on_change_and_ignores_other_columns(spark, schema):
+    target = f"{schema}.up"
+    first = io.write_delta_upsert(spark, spark.createDataFrame([("a", "x", "r1"), ("b", "y", "r1")], UPSERT), target, ["k"], ["flag"])
+    assert first == {"rows_inserted": 2, "rows_updated": 0}
+
+    same = io.write_delta_upsert(spark, spark.createDataFrame([("a", "x", "r2"), ("b", "y", "r2")], UPSERT), target, ["k"], ["flag"])
+    assert same == {"rows_inserted": 0, "rows_updated": 0}
+    assert {r.run for r in spark.table(target).collect()} == {"r1"}  # sin cambios no se toca nada
+
+    changed = io.write_delta_upsert(spark, spark.createDataFrame([("a", "z", "r3"), ("c", "y", "r3")], UPSERT), target, ["k"], ["flag"])
+    assert changed == {"rows_inserted": 1, "rows_updated": 1}
+    assert sorted((r.k, r.flag, r.run) for r in spark.table(target).collect()) == [("a", "z", "r3"), ("b", "y", "r1"), ("c", "y", "r3")]
+
+
+def test_upsert_compares_arrays_and_nulls(spark, schema):
+    target = f"{schema}.up_arr"
+    kind = "k string, flags array<string>, note string"
+    io.write_delta_upsert(spark, spark.createDataFrame([("a", ["x"], None)], kind), target, ["k"], ["flags", "note"])
+    assert io.write_delta_upsert(spark, spark.createDataFrame([("a", ["x"], None)], kind), target, ["k"], ["flags", "note"])["rows_updated"] == 0
+    assert io.write_delta_upsert(spark, spark.createDataFrame([("a", ["x", "y"], None)], kind), target, ["k"], ["flags", "note"])["rows_updated"] == 1
+
+
+def test_upsert_rejects_columns_the_target_does_not_have(spark, schema):
+    target = f"{schema}.up_extra"
+    io.write_delta_upsert(spark, spark.createDataFrame([("a", "x", "r")], UPSERT), target, ["k"], ["flag"])
+    wider = spark.createDataFrame([("a", "x", "r", "nueva")], UPSERT + ", extra string")
+    with pytest.raises(ValueError, match="extra"):
+        io.write_delta_upsert(spark, wider, target, ["k"], ["flag"])
+
+
 def test_merge_validates_keys(spark, schema):
     df = spark.createDataFrame([("T1", "h1", "a")], SCHEMA)
     with pytest.raises(ValueError, match="ausentes"):
