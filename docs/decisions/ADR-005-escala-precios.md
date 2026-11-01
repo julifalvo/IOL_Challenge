@@ -1,6 +1,6 @@
 # ADR-005 — Escala de precios (por 1 VN vs por 100 VN) y errores de escala
 
-- **Estado:** propuesto
+- **Estado:** aceptado (2026-11-01, con la cobertura completa de la etapa 05)
 - **Requisitos:** R-09, R-16
 
 ## Contexto
@@ -11,13 +11,18 @@
 
 ## Decisión
 1. `gross_amount = qty × price` en la escala del dataset (por 1 VN). Se documenta en el diccionario.
-2. `dim_instrument.price_scale_factor` lleva el precio del proveedor a esa escala. Es **por símbolo y proveedor**: dentro de un mismo proveedor y tipo de activo hay series a ×1, ×1/3 y ×0,1 [MEDIDO, ADR-008].
-3. **Sanity check automático** por símbolo: mediana de `price_trade / close` en [0,5; 2] o `SCALE_SUSPECT`.
+2. `price_scale_factor` lleva el precio del proveedor a esa escala. Es **por símbolo y proveedor**: dentro de un mismo proveedor y tipo de activo hay series a ×1, ×1/3 y ×0,1 [MEDIDO, ADR-008]. Se elige entre candidatos fijos (`config.QUOTE_SCALE_CANDIDATES`: 0,01; 0,1; 1/3; 1; 3; 10; 100), el más cercano a la mediana de `precio operado / cierre crudo`.
+   - **Por qué candidatos y no la mediana misma:** dividir por la relación medida haría que cada serie coincida con las operaciones por construcción, y borraría justo lo que se quiere medir. Un factor discreto corrige la unidad y no absorbe un sobreprecio.
+3. **Validación automática** por símbolo y proveedor, en `iol_ops.quote_series`:
+   - **`SCALE_SUSPECT`:** después del factor, la relación queda fuera de [0,5; 2]. Son 14 pares de 3.274; por ejemplo `HUT` y `BKNG` a ×25 [MEDIDO]. No se agregan candidatos para cubrirlos: sin saber por qué dan eso, sería ajustar a ojo.
+   - **`BIASED`:** después del factor, el sesgo supera la tolerancia de "por encima del mercado" de su tipo (ADR-009). Ese sesgo solo ya marcaría casi todas las operaciones del símbolo.
 4. `DQ021_POSSIBLE_SCALE_ERROR` (ERROR) cuando el precio de un trade está a ×50 o ×1/50 de la mediana del símbolo: no entra a métricas de importe ni a comparación con mercado; se conserva y se reporta.
 5. Outliers (`DQ020`) se evalúan sobre log(importe) por (asset_type, moneda), no sobre cantidad.
 
-## Límite del sanity check (spike del 2026-11-01, ADR-008)
-El rango [0,5; 2] detecta errores de escala groseros, como `YPFD` a ×10 o SPY a ×3, pero no sesgos menores: BYMA da AL30 con relación 1,15, YM34D con 1,04 y MSFT con 1,0086, todos dentro del rango [MEDIDO]. **Pendiente para la etapa 05:** decidir con la cobertura completa si se achica el rango, y dónde. `config.SCALE_SANITY_RANGE` no cambia hasta tener esa evidencia.
+## Por qué el rango [0,5; 2] no alcanza y no se achica (etapa 05)
+El rango detecta errores de escala groseros, como `YPFD` a ×10 o SPY a ×3, pero no sesgos menores: BYMA da AL30 con relación 1,15, YM34D con 1,04 y MSFT con 1,0086, todos dentro del rango [MEDIDO]. Achicarlo mezclaría dos preguntas. Queda [0,5; 2] para la unidad y un control aparte, `BIASED`, para el sesgo.
+
+**Límite:** el sesgo se mide contra las mismas operaciones que después se comparan con el mercado. Un símbolo que realmente opera con sobreprecio sostenido quedaría excluido en vez de marcado. Se acepta porque la exclusión se cuenta aparte (`excluded_by_validation` y `SOURCE_BIASED`), nunca baja el denominador, y porque hay evidencia directa de que la causa suele ser la fuente: BYMA da 1,35% de sesgo mediano y data912 0,22% sobre las mismas operaciones [MEDIDO].
 
 ## Por qué no "corregir" multiplicando por 100
 No sabemos si el error está en precio, en cantidad o en ambos (el importe puede ser correcto). Corregir sin confirmación del origen sería inventar datos. Se marca y se escala al dueño del dato (canal IOLnet).

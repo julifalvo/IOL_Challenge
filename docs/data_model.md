@@ -33,8 +33,8 @@ erDiagram
 | ingested_at | TIMESTAMP | |
 | schema_version | STRING | `trades_v1` |
 
-### `quotes_raw` — una fila por (provider, provider_symbol, quote_date, fetch_run_id)
-`provider, provider_symbol, quote_date, open, high, low, close, volume, currency, raw_payload (STRING JSON), fetched_at, fetch_run_id, source_file, ingestion_run_id`
+### `quotes_raw` — una fila por (provider, provider_symbol, quote_date)
+`provider, provider_symbol, symbol, quote_date, open, high, low, close, volume, fetch_run_id, fetched_at`. Precio tal como lo da el proveedor, sin escalar. Reejecutar no duplica ni toca lo que no cambió.
 
 ## Silver (`iol_silver`)
 
@@ -109,19 +109,20 @@ Fila de versión inicial: `valid_from` = fecha de primera operación del cliente
 
 `is_analytics_eligible = quality_status IN ('OK','WARNING')` — define qué entra a métricas por defecto (DQ021 es ERROR, por lo que queda excluido).
 
-### `fact_market_quotes` — una fila por (instrument_sk, quote_date, provider)
-`instrument_sk, symbol, quote_date, provider, open, high, low, close (escala trade), close_raw, currency_code, price_scale_factor_applied, volume, fetch_run_id`
+### `fact_market_quotes` — una fila por (instrument_sk, quote_date, provider); solo la serie elegida de cada símbolo
+`instrument_sk, symbol, quote_date, provider, open, high, low, close (escala trade), close_raw, currency_code, price_scale_factor_applied, volume, fetch_run_id, is_active` — `is_active` pasa a false si la serie deja de ser la elegida: no se borra.
 
 ### `fact_trade_market` — una fila por trade (1:1 con fact_trades)
 | Columna | Nota |
 |---|---|
-| trade_id, instrument_sk, side | |
-| match_method | `EXACT_DAY`, `PRIOR_DAY_IMPUTED`, `UNAVAILABLE`, `UNMAPPED`, `CURRENCY_MISMATCH`, `SCALE_SUSPECT` |
+| trade_id, instrument_sk, symbol, currency_code, side | |
+| match_method | `EXACT_DAY`, `PRIOR_DAY_IMPUTED`, `UNAVAILABLE`, `UNMAPPED`, `CURRENCY_MISMATCH`, `SCALE_SUSPECT`, `SOURCE_BIASED` |
 | quote_date_used, quote_age_business_days | |
 | benchmark_close, day_low, day_high | |
 | deviation_pct | (price − close) / close |
 | position_vs_range | `ABOVE_HIGH`, `WITHIN`, `BELOW_LOW`, `NO_RANGE` |
-| is_above_market | price > close × (1 + τ) — τ en config (ADR-009) |
+| is_above_market | price > close × (1 + τ) — τ por `asset_type`, en config (ADR-009) |
+| above_market_tolerance | τ aplicada a la fila |
 | is_unfavorable_for_client | BUY y por encima / SELL y por debajo |
 | is_comparable | match en {EXACT_DAY, PRIOR_DAY_IMPUTED} y fila elegible |
 
@@ -135,8 +136,9 @@ Fila de versión inicial: `valid_from` = fecha de primera operación del cliente
 | `quality_baselines` | versión de reglas × regla × grupo | rules_version, rule_code, group_key (DQ021: símbolo\|moneda; DQ020: tipo\|moneda; DQ022: tipo), median_value, mad_value, limit_value, n |
 | `pipeline_metrics` | run × métrica | pipeline_run_id, stage, metric_name, observed_value, threshold, comparator, status, details |
 | `gold_status` | run | pipeline_run_id, status (GREEN/YELLOW/RED), failed_checks, warnings, decided_at |
-| `quote_requests` | request | fetch_run_id, provider, provider_symbol, from, to, http_status, attempts, rows_returned, error, requested_at |
-| `quote_coverage` | símbolo | symbol, currency_code, asset_type, provider_symbol, trades_total, trades_eligible, matched_exact, matched_imputed, unavailable, coverage_pct, last_error |
+| `quote_requests` | pedido: provider, provider_symbol, rango | fetch_run_id, source, provider, provider_symbol, symbol, date_from, date_to, http_status, attempts, rows_returned, error, requested_at |
+| `quote_series` | símbolo × proveedor candidato | symbol, provider, provider_symbol, priority, quote_rows, days_compared, ratio_p10, ratio_p50, ratio_p90, price_scale_factor, bias_pct, series_status, is_selected, is_active |
+| `quote_coverage` | símbolo | symbol, currency_code, asset_type, provider, provider_symbol, series_status, price_scale_factor, bias_pct, trades_total, trades_eligible, matched_exact, matched_imputed, unavailable, excluded_by_validation, unmapped, coverage_pct, last_error |
 | `ai_runs` | componente × instrumento × prompt × modelo | ai_run_id (determinista), pipeline_run_id, component, prompt_version, model, symbol, input_hash, output_json, validation_status (`VALID`/`CONFLICT`/`LOW_CONFIDENCE`/`REJECTED`/`FAILED`), error, latency_ms (promedio del lote), created_at |
 | `instrument_enrichment` | símbolo | symbol, asset_type, issuer, sector, underlying_ticker_foreign, confidence, model, prompt_version, ai_run_id, is_active. Solo salidas `VALID`; alimenta `instrument_mapping` |
 | `instrument_mapping` | símbolo | symbol, currency_code, description_canonical, asset_type, asset_type_source, underlying_key, settlement_variant, price_scale_factor, maturity_date, issuer, sector, underlying_ticker_foreign, provider, provider_symbol, mapping_status, mapping_version, updated_at. Alimenta dim_instrument; se corrige con `src/iol_pipeline/mapping/overrides.csv` |

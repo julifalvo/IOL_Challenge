@@ -1,6 +1,6 @@
 # ADR-008 — Fuente de cotizaciones y modo de adquisición
 
-- **Estado:** aceptado (spike medido desde local y desde Free Edition, 2026-11-01); a confirmar con la cobertura de la etapa 05
+- **Estado:** aceptado (spike del 2026-11-01, confirmado con la cobertura completa de la etapa 05)
 - **Requisitos:** R-17, R-18, R-20
 
 ## Contexto
@@ -67,25 +67,63 @@ En un activo sin sesgo la relación diaria igual se dispersa: p10 y p90 quedan e
 6. **YM34D, la única ON probada, da 4% de sesgo con BYMA** (0,0104; p10 y p90: 0,0103 y 0,0108), su única fuente. T30J6, una letra, da 0,0100 limpio. Que sea ajuste por renta es [HIPÓTESIS]; con un solo símbolo no se puede generalizar a todas las ONs.
 7. **data912 se declara proyecto personal.** Su descripción dice que es para fines educativos, que cualquier parecido con datos reales es coincidencia y que se puede dar de baja. No publica términos de uso ni garantías.
 
-**Límite del spike:** son 16 de 1.445 símbolos. La cobertura y la escala del resto se miden en la etapa 05.
+**Límite del spike:** son 16 de 1.445 símbolos. La cobertura y la escala del resto están abajo.
 
-## Decisión (aceptada el 2026-11-01; a confirmar con la cobertura de la etapa 05)
-| `asset_type` | Primario | Fallback | Por qué |
-|---|---|---|---|
-| Bonos soberanos | data912 | ninguno | BYMA los da ajustados; Yahoo no los tiene |
-| Acciones locales | data912 | Yahoo o BYMA, solo con escala validada por símbolo | `YPFD` está a ×0,1 en los otros dos |
-| CEDEARs en ARS | data912 | Yahoo, solo con escala validada por símbolo | BYMA da un sesgo comparable al umbral de la métrica; Yahoo da SPY a ×1/3 |
-| CEDEARs en USD (variantes D/C) | **a decidir en la etapa 05**, entre Yahoo y BYMA | el otro | data912 no las tiene. En las 3 probadas ninguna es claramente mejor, y las dos dan SPYD a ×1/3 |
-| Letras | BYMA | ninguno | Es el único con esas series; T30J6 da limpio |
-| ONs | BYMA, con sesgo a medir | ninguno | Es el único con esas series. En la etapa 05, excluir de la comparación con mercado las series con sesgo medible |
+## Medición completa (etapa 05, los 1.445 símbolos)
 
-**Trade-off:** el criterio 3 pedía fuente oficial antes que agregador, y para bonos, acciones y CEDEARs en ARS gana un agregador personal porque la serie oficial no sirve como precio de mercado sin desajustar. Eso concentra el riesgo en data912. Si deja de estar disponible, los bonos soberanos quedan sin cobertura, y acciones y CEDEARs pasan a Yahoo o BYMA. Gold pasa a YELLOW (G08, G09), no a RED.
+Descarga desde local, 2025-12-15..2026-03-13 [MEDIDO, 2026-11-01]. "Con filas" es el símbolo con al menos una cotización. El sesgo es la mediana por símbolo de `|relación / factor − 1|`, con al menos 5 días comparables.
 
-**Provisional en `config.PROVIDER_RULES`,** hasta medirlo en la etapa 05: Yahoo para CEDEARs y acciones en USD, y BYMA para bonos subsoberanos, que el spike no probó.
+| `asset_type` | Símbolos | Operaciones | data912: con filas | Yahoo: con filas | BYMA: con filas | Sesgo data912 | Sesgo Yahoo | Sesgo BYMA |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| CEDEAR | 599 | 54.054 | 156 | 499 | 596 | 0,19% | 0,25% | 0,90% |
+| BONO_SOBERANO | 98 | 18.288 | 37 | — | 98 | 0,12% | — | 3,09% |
+| ACCION_LOCAL | 88 | 18.166 | 62 | 85 | 88 | 0,28% | 0,44% | 1,11% |
+| LETRA_LECAP_BONCAP | 28 | 4.516 | 0 | — | 28 | — | — | 0,09% |
+| ON | 315 | 2.551 | 0 | — | 315 | — | — | 4,32% |
+| OPCION | 295 | 2.016 | — | — | 0 | — | — | — |
+| BONO_SUBSOBERANO | 19 | 313 | 6 | — | 19 | 0,29% | — | 13,13% |
+| WARRANT | 2 | 95 | — | — | 2 | — | — | 1,71% |
+| OTRO | 1 | 1 | — | — | 0 | — | — | — |
+
+- **El sesgo de BYMA es general y no solo de bonos:** mediana 1,35% y p90 7,43%, contra 0,22% y 0,77% en data912, y 0,28% y 1,03% en Yahoo. Confirma los hallazgos 1, 5 y 6 del spike. Que venga de ajustes por renta y dividendos sigue siendo [HIPÓTESIS].
+- **Yahoo y BYMA comparten factores:** 570 de 583 series de Yahoo dan ×1; el resto ×10, ×1/3, ×3 y ×100, casi siempre iguales en BYMA.
+- **Yahoo da HTTP 400** en AXIA, EAD, LND, MDLZD y TEFO. BYMA y data912 no dieron errores.
+- **Opciones: 0 filas de 295 pedidas** a BYMA. No hay fuente gratuita probada para ellas.
+
+## Decisión
+**Una cadena de prioridad por tipo, fijada de antemano** (`config.QUOTE_PROVIDERS_BY_TYPE`). De cada símbolo se usa la primera serie de su cadena que pasa la validación de ADR-005, en dos pasadas: primero las `OK`, y si no hay ninguna, una `THIN` (ver abajo).
+
+| `asset_type` | Cadena | Por qué |
+|---|---|---|
+| CEDEARs y acciones | data912 → Yahoo → BYMA | Es el orden de menor a mayor sesgo medido. BYMA queda último, por si es el único con la serie |
+| Bonos soberanos y subsoberanos | data912 → BYMA | Yahoo no los tiene; BYMA los da ajustados, y se usa solo si la serie pasa la validación |
+| Letras | BYMA | Es el único con esas series, y con poco sesgo: 0,09% |
+| ONs | BYMA | Es el único con esas series. Con 4,32% de sesgo mediano, la mayoría queda excluida |
+| Opciones, warrants, otros | BYMA | Es el único que se probó. Opciones y otros quedan sin datos, y siguen en el denominador |
+
+**Por qué la prioridad se fija antes y no se elige la serie que más se parece a las operaciones:** elegir por parecido sesgaría la métrica de "por encima del mercado", porque siempre ganaría la serie que más la achica. La validación solo excluye.
+
+**Estados de una serie** (`iol_ops.quote_series`), con la mediana de `precio operado / cierre crudo` por día:
+
+| Estado | Condición | ¿Se usa? |
+|---|---|---|
+| `OK` | al menos `QUOTE_MIN_DAYS` (5) días comparables y sesgo dentro de la tolerancia | sí |
+| `THIN` | menos de 5 días comparables, y sesgo dentro de la tolerancia | solo si el símbolo no tiene ninguna `OK` |
+| `BIASED` | sesgo mayor a la tolerancia de su tipo, con cualquier cantidad de días | no |
+| `SCALE_SUSPECT` | sin un factor candidato que deje la relación en [0,5; 2] | no |
+| `NO_OVERLAP` | tiene filas, pero ningún día con operaciones | no |
+| `NO_DATA` | sin filas | no |
+
+- **5 días:** con menos, la mediana es más que nada ruido del precio operado contra el cierre. Por eso `THIN` queda como último recurso y se informa aparte.
+- **Un `THIN` con sesgo grande se excluye igual:** 189 de 311 series de ON tienen menos de 5 días, y su tipo da 4,32%. Dejarlas pasar por tener pocos días daría cobertura sobre un benchmark que probablemente esté sesgado.
+
+**Trade-off:** el criterio 3 pedía fuente oficial antes que agregador, y gana un agregador personal porque la serie oficial no sirve como precio de mercado sin desajustar. Eso concentra el riesgo en data912. Si deja de estar disponible, los símbolos pasan solos a Yahoo o BYMA en la corrida siguiente, si validan; los bonos soberanos, en su mayoría, no van a validar. Gold pasa a YELLOW (G08, G09), no a RED.
+
+**Mapeo inicial en `config.PROVIDER_RULES`:** la etapa 04 corre antes y deja cada símbolo `UNVERIFIED`. La etapa 05 pisa proveedor, símbolo y factor con la serie elegida, y deja `MAPPED`, o `UNSUPPORTED` si no hay ninguna.
 
 **API de IOL:** no evaluada. Requiere credenciales personales y se decidió no usarlas en este proyecto (2026-11-01). Podría ser una mejor opción si da los bonos sin ajustar; queda como mejora futura.
 
-- Modo: `api` desde Databricks: los 3 proveedores devuelven datos desde serverless [MEDIDO, 16 símbolos]. Si aparecen límites con los 1.445 símbolos, `tools/quotes_fetcher` local → Volume → `quotes_raw` con `FileReplayProvider`. Mismo contrato y misma tabla `quote_requests` en ambos modos.
+- **Modo:** el widget `quotes_source` del notebook 05 elige `api`, desde Databricks, o `volume`: `tools/quotes_fetcher` local → Volume → `quotes_raw` con `FileReplayProvider`. Mismo contrato y misma tabla `quote_requests` en ambos. Lo pedido sin error no se repite, así que una corrida en `volume` completa exactamente lo que `api` dejó con error.
 
 ## Criterios de elección
 1. Cobertura de variantes D/C y de soberanos (mayor parte de AL30 = 13.448 operaciones).
