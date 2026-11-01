@@ -116,4 +116,6 @@ def test_treasury_family_shows_t30a7_first(trades):
 def test_monthly_activity_uses_effective_date(trades):
     rows = {r.month: r for r in profiling.monthly_activity(trades).collect()}
     assert sum(r.ops for r in rows.values()) == 39
+    # Con fecha local serían 17: los sábados 10/01 y 31/01 sumarían días, y el 30/01 no existiría.
+    assert rows["2026-01"].business_days_observed == 16
     assert all(r.ops_per_business_day == r.ops / r.business_days_observed for r in rows.values())
