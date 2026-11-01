@@ -39,7 +39,7 @@ print("Archivos:", csv_files)
 
 results = [bronze.ingest_trades(spark, path, trades_table, runs_table, RUN_ID) for _ in range(RUNS) for path in csv_files]
 for r in results:
-    print({k: r[k] for k in ("status", "rows_read", "rows_inserted", "rows_already_present", "rows_conflict", "rows_duplicate_in_file", "error")})
+    print({k: r[k] for k in ("status", "rows_read", "rows_inserted", "rows_already_present", "rows_conflict", "rows_duplicate_in_file", "duplicate_row_numbers", "error")})
 
 # COMMAND ----------
 
@@ -64,9 +64,11 @@ print(f"{trades_table}: {rows_out:,} filas")
 detail = spark.sql(f"DESCRIBE DETAIL {trades_table}").first()
 print("format:", detail["format"], "· numFiles:", detail["numFiles"], "· sizeInBytes:", detail["sizeInBytes"])
 display(spark.table(trades_table).select("source_file", "source_file_hash", "schema_version", "ingestion_run_id").distinct())
+orphans = bronze.orphan_ingestion_runs(spark, trades_table, runs_table)
+print("Corridas de Bronze sin registro en ingestion_runs:", orphans or "ninguna")
 
 # COMMAND ----------
 
-ok = bool(results) and all(r["status"] == "SUCCESS" for r in results)
+ok = bool(results) and all(r["status"] == "SUCCESS" for r in results) and not orphans
 dbutils.notebook.exit(json.dumps({"status": "SUCCESS" if ok else "FAILED", "pipeline_run_id": RUN_ID, "rows_out": rows_out,
                                   "runs": [{"status": r["status"], "rows_inserted": r["rows_inserted"]} for r in results]}))
