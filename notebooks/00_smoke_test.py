@@ -4,7 +4,7 @@
 # MAGIC **Spec:** docs/specs/00_entorno.md · **Requisitos:** R-37, R-17, R-28 · **Escribe:** `iol_ops.smoke_test_results`
 # MAGIC
 # MAGIC Verifica lo que puede cambiar el plan: orquestación con `dbutils.notebook.run`, salida a internet hacia los
-# MAGIC proveedores de cotizaciones (ADR-008), `ai_query` (ADR-011), liquid clustering (ADR-012) y el MERGE Delta de `src/`.
+# MAGIC proveedores de cotizaciones (ADR-008), `ai_query` (ADR-011), liquid clustering en `CREATE` y `ALTER` (ADR-012), región y el MERGE Delta de `src/`.
 # MAGIC Ningún chequeo corta el notebook: cada uno registra OK, INCONCLUSO o FAIL con el detalle. Pasar la tabla final a ADR-001/008/011.
 
 # COMMAND ----------
@@ -103,10 +103,36 @@ except Exception as exc:
 finally:
     spark.sql(f"DROP TABLE IF EXISTS {probe}")
 
+# El antes y después del spec 07 agrega clustering a una tabla que ya existe.
+probe_alter = io.table_name("ops", "smoke_alter_cluster_probe", catalog=CATALOG)
+try:
+    spark.sql(f"CREATE OR REPLACE TABLE {probe_alter} (id INT, d DATE)")
+    spark.sql(f"ALTER TABLE {probe_alter} CLUSTER BY (d)")
+    clustering = spark.sql(f"DESCRIBE DETAIL {probe_alter}").first()["clusteringColumns"]
+    record("delta:alter_cluster_by", "OK" if list(clustering) == ["d"] else "FAIL", f"clusteringColumns={clustering}")
+except Exception as exc:
+    record("delta:alter_cluster_by", "FAIL", f"{type(exc).__name__}: {exc}")
+finally:
+    spark.sql(f"DROP TABLE IF EXISTS {probe_alter}")
+
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## 5. MERGE Delta de `src/iol_pipeline/io.py` en serverless + resultados persistidos
+# MAGIC ## 5. Región y catálogo por defecto
+
+# COMMAND ----------
+
+try:
+    # current_metastore() = <cloud>:<region>:<uuid>; el uuid no se guarda.
+    row = spark.sql("SELECT current_metastore() AS m, current_catalog() AS c").first()
+    record("env:region_catalog", "OK", f"{':'.join(row['m'].split(':')[:2])} · catálogo por defecto: {row['c']}")
+except Exception as exc:
+    record("env:region_catalog", "FAIL", f"{type(exc).__name__}: {exc}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## 6. MERGE Delta de `src/iol_pipeline/io.py` en serverless + resultados persistidos
 
 # COMMAND ----------
 
