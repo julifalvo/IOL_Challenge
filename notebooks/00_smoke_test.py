@@ -5,7 +5,7 @@
 # MAGIC
 # MAGIC Verifica lo que puede cambiar el plan: orquestación con `dbutils.notebook.run`, salida a internet hacia los
 # MAGIC proveedores de cotizaciones (ADR-008), `ai_query` (ADR-011), liquid clustering (ADR-012) y el MERGE Delta de `src/`.
-# MAGIC Ningún chequeo corta el notebook: cada uno registra OK/FAIL con el detalle. Pasar la tabla final a ADR-001/008/011.
+# MAGIC Ningún chequeo corta el notebook: cada uno registra OK, INCONCLUSO o FAIL con el detalle. Pasar la tabla final a ADR-001/008/011.
 
 # COMMAND ----------
 
@@ -53,13 +53,14 @@ except Exception as exc:
 
 # MAGIC %md
 # MAGIC ## 2. Egress a proveedores de cotizaciones (ADR-008)
-# MAGIC Cualquier respuesta HTTP = host alcanzable (aunque sea 403/404). Error de conexión o timeout = bloqueado.
+# MAGIC HTTP 403, 407 o 429 = INCONCLUSO (pudo responder un intermediario). Otra respuesta HTTP = host alcanzable. Error de conexión o timeout = bloqueado.
 
 # COMMAND ----------
 
 import requests
 
-for r in smoke.check_egress(config.SMOKE_EGRESS_URLS, requests.get, config.HTTP_TIMEOUT_S):
+for r in smoke.check_egress(config.SMOKE_EGRESS_URLS, requests.get, config.HTTP_TIMEOUT_S,
+                            config.SMOKE_EGRESS_INCONCLUSIVE_HTTP):
     record(r["check"], r["status"], r["detail"])
 
 # COMMAND ----------
@@ -136,9 +137,12 @@ io.write_delta_merge(spark, to_df(results[-1:]), target, keys)
 
 summary = spark.table(target).where(F.col("smoke_run_id") == SMOKE_RUN_ID).orderBy("check")
 display(summary)
-failed = [r["check"] for r in results if r["status"] != "OK"]
-print(f"{len(results) - len(failed)}/{len(results)} OK · FAIL: {failed or 'ninguno'}")
+failed = [r["check"] for r in results if r["status"] == "FAIL"]
+inconclusive = [r["check"] for r in results if r["status"] == "INCONCLUSO"]
+print(f"{len(results) - len(failed) - len(inconclusive)}/{len(results)} OK · "
+      f"INCONCLUSO: {inconclusive or 'ninguno'} · FAIL: {failed or 'ninguno'}")
 
 # COMMAND ----------
 
-dbutils.notebook.exit(json.dumps({"status": "SUCCESS", "smoke_run_id": SMOKE_RUN_ID, "failed_checks": failed}))
+dbutils.notebook.exit(json.dumps({"status": "SUCCESS", "smoke_run_id": SMOKE_RUN_ID, "failed_checks": failed,
+                                 "inconclusive_checks": inconclusive}))

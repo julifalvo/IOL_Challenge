@@ -8,7 +8,7 @@
 - Free Edition restringe la salida a internet; no hay lista pública de dominios permitidos.
 
 ## Egress desde Free Edition (smoke test, 2026-11-01)
-`requests.get` a la raíz de cada dominio desde serverless (`smoke_run_id = 1cc453e0-…`). Cualquier respuesta HTTP cuenta como "el dominio no está bloqueado".
+`requests.get` a la raíz de cada dominio desde serverless (`smoke_run_id = 1cc453e0-…`). Criterio vigente: HTTP 403, 407 y 429 son `INCONCLUSO`, porque también los puede devolver un intermediario; otra respuesta HTTP es OK; error de conexión o timeout es FAIL.
 
 | Proveedor | URL probada | Respuesta [MEDIDO] |
 |---|---|---|
@@ -18,9 +18,10 @@
 | Yahoo Finance | `https://query1.finance.yahoo.com` | HTTP 429 (Too Many Requests) |
 
 Qué prueba y qué no:
-- **Prueba:** la salida a internet de Free Edition no bloquea ninguno de los 4 dominios. El modo `api` desde Databricks es viable a nivel red.
+- **Prueba:** IOL, BYMA y data912 respondieron HTTP 200, así que el modo `api` desde Databricks es viable a nivel red para esos tres.
 - **No prueba:** que los endpoints de datos devuelvan series para los símbolos del challenge. Solo se pidió la raíz, sin autenticación ni parámetros. Eso se mide en el spike.
-- **Yahoo:** el 429 indica rate limiting, probablemente por IP compartida de serverless [HIPÓTESIS]. Que se pueda usar desde Databricks sigue sin verificar.
+- **Yahoo:** inconcluso. El 429 indica rate limiting, probablemente por IP compartida de serverless [HIPÓTESIS], pero esta corrida no guardó quién respondió. Que se pueda usar desde Databricks sigue sin verificar.
+- **Esta corrida usó el criterio anterior** y registró el 429 como OK (9/9). `00_smoke_test` ahora guarda también el header `Server`; falta volver a correrlo.
 - Por ahora el fetcher local (`tools/quotes_fetcher`) deja de ser necesario por egress. Sigue como plan B por rate limiting o términos de uso.
 
 ## Spike (8 símbolos: AL30, AL30D, AL30C, AAPL, AAPLD, YPFD, T30J6, YM34D; 2025-12-15..2026-03-13)
@@ -30,7 +31,7 @@ Qué prueba y qué no:
 | API IOL (serie histórica) | dominio OK | | | | | | requiere cuenta |
 | BYMA Open Data | dominio OK | | | | | | |
 | data912 | dominio OK | | | | | | |
-| yfinance (`.BA`) | dominio OK, HTTP 429 | | | | | | no oficial |
+| yfinance (`.BA`) | inconcluso, HTTP 429 | | | | | | no oficial |
 
 ## Decisión (completar)
 - Primario por `asset_type`: …
