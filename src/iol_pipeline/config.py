@@ -96,12 +96,14 @@ RULE_SEVERITY = {  # DQ021 baja a WARNING en OPCION (quality.rule_severity)
     "DQ031_SYMBOL_MULTI_DESC": "INFO",
     "DQ032_AFTER_MATURITY": "ERROR",
 }
-DECIMAL_PARSE_TYPE = "decimal(38,8)"
+DECIMAL_PARSE_TYPE = "decimal(38,18)"  # para detectar si convertir a QTY_TYPE o PRICE_TYPE cambiaría el dato
 QTY_TYPE = "decimal(20,0)"
 PRICE_TYPE = "decimal(24,8)"
 AMOUNT_TYPE = "decimal(38,8)"
+AMOUNT_PRICE_TYPE = "decimal(17,8)"  # QTY_TYPE × este tipo entra en AMOUNT_TYPE sin que Spark recorte decimales
 EXAMPLE_HASH_CHARS = 12
-EVENT_EXAMPLES = 9
+EVENT_EXAMPLES_PER_RULE = 3
+EVENT_EXAMPLE_RULES = ("DQ010_SATURDAY", "DQ020_EXTREME_AMOUNT", "DQ021_POSSIBLE_SCALE_ERROR")
 QUALITY_PARAMS = {
     "robust_z_threshold": 3.5,         # DQ020, Iglewicz-Hoaglin
     "robust_z_constant": 0.6745,       # DQ020, Iglewicz-Hoaglin

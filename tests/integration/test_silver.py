@@ -4,9 +4,11 @@ Los tests que solo leen comparten una corrida: `run_silver` tarda decenas de seg
 """
 from __future__ import annotations
 
+from datetime import date
+
 import pytest
 
-from iol_pipeline import bronze, config, silver
+from iol_pipeline import bronze, config, quality, silver
 
 pytestmark = pytest.mark.integration
 TABLES = ("trades_raw", "ingestion_runs", "trades", "quality_baselines", "quality_events")
@@ -68,7 +70,7 @@ def test_fixture_cases_get_their_flags(spark, shared):
 
 def test_rerun_leaves_the_three_tables_identical(spark, shared):
     second = shared["second"]
-    assert second["silver_inserted"] == second["silver_updated"] == second["events_inserted"] == 0
+    assert second["silver_inserted"] == second["silver_updated"] == second["events_inserted"] == second["events_updated"] == 0
     assert second["baselines_inserted"] == second["baselines_updated"] == 0
     assert {n: _snapshot(spark, shared["tables"][n]) for n in shared["before"]} == shared["before"]  # otro run id: no toca nada
 
@@ -77,14 +79,14 @@ def test_reconciliation_has_no_differences(spark, shared):
     t = shared["tables"]
     check = silver.reconciliation(spark.table(t["trades_raw"]), spark.table(t["trades"]), spark.table(t["quality_events"]))
     assert check == {"bronze_rows": 39, "silver_rows": 39, "bronze_not_in_silver": 0, "silver_not_in_bronze": 0,
-                     "not_ok_without_flag": 0, "severe_flags_without_event": 0}
+                     "not_ok_without_flag": 0, "severe_flags_without_event": 0, "active_events_without_flag": 0}
 
 
 def test_baselines_are_persisted_with_their_version(spark, shared):
     rows = spark.table(shared["tables"]["quality_baselines"]).collect()
     assert {r.rule_code for r in rows} == {"DQ020_EXTREME_AMOUNT", "DQ021_POSSIBLE_SCALE_ERROR", "DQ022_EXTREME_QTY"}
     assert {r.rules_version for r in rows} == {config.RULES_VERSION}
-    scale = next(r for r in rows if r.rule_code == "DQ021_POSSIBLE_SCALE_ERROR" and r.group_key == "T30A7")
+    scale = next(r for r in rows if r.rule_code == "DQ021_POSSIBLE_SCALE_ERROR" and r.group_key == "T30A7|ARS")
     assert scale.median_value == pytest.approx(1.0802)
 
 
@@ -96,6 +98,22 @@ def test_rule_summary_lists_every_rule_without_identifiers(spark, shared):
     assert not {"trade_id", "client_id", "id_cliente", "id_transaccion"} & set(summary.columns)
     example = next(r for r in rows if r.rule_code == "DQ010_SATURDAY").example_record_hash
     assert len(example) == config.EXAMPLE_HASH_CHARS and "TXN" not in example
+
+
+def test_event_examples_cover_every_example_rule_without_identifiers(spark, shared):
+    examples = silver.event_examples(spark.table(shared["tables"]["quality_events"]))
+    rows = examples.collect()
+    assert "DQ010_SATURDAY" in {r.rule_code for r in rows} and "DQ021_POSSIBLE_SCALE_ERROR" in {r.rule_code for r in rows}
+    assert max(sum(1 for r in rows if r.rule_code == code) for code in config.EVENT_EXAMPLE_RULES) <= config.EVENT_EXAMPLES_PER_RULE
+    assert examples.columns == ["rule_code", "severity", "details_json"]
+
+
+def test_missing_baselines_fail_instead_of_silently_skipping_rules(spark, shared, monkeypatch):
+    t = shared["tables"]
+    monkeypatch.setattr(config, "RULES_VERSION", "rules_sin_estadisticas")
+    monkeypatch.setattr(quality, "compute_baselines", lambda typed: spark.table(t["quality_baselines"]).limit(0))
+    with pytest.raises(ValueError, match="no tiene estadísticas"):
+        _run(spark, t, "p9")
 
 
 def test_status_distribution_adds_up(spark, shared):
@@ -122,11 +140,72 @@ def test_new_version_in_bronze_flags_the_row_that_was_already_there(spark, schem
     assert len(versions) == 2
     assert all("DQ004_ID_CONFLICT" in r.quality_flags and r.quality_status == "CRITICAL" for r in versions)
 
-    # Y una versión nueva de las reglas se reaplica a todas las filas.
-    config_version = config.RULES_VERSION
-    config.RULES_VERSION = "rules_v2"
-    try:
-        assert _run(spark, t, "p3")["silver_updated"] == 40
-    finally:
-        config.RULES_VERSION = config_version
+
+
+def test_new_rules_version_reapplies_everything_and_keeps_the_statistics(spark, schema, trades_small_csv, monkeypatch):
+    t = _tables(schema)
+    _load(spark, t, trades_small_csv)
+    _run(spark, t, "p1")
+    scale = lambda: spark.table(t["trades"]).where("array_contains(quality_flags, 'DQ021_POSSIBLE_SCALE_ERROR')").count()  # noqa: E731
+    before = scale()
+    assert before > 0
+
+    monkeypatch.setattr(config, "RULES_VERSION", "rules_v2")
+    result = _run(spark, t, "p2")
+
+    assert result["silver_updated"] == 39
     assert {r.rules_version for r in spark.table(t["trades"]).collect()} == {"rules_v2"}
+    assert scale() == before  # las estadísticas de la versión nueva existen: las reglas no se apagan
+    events = spark.table(t["quality_events"])
+    assert events.where("rules_version = 'rules_v2' AND is_active").count() > 0
+    assert events.where("rules_version != 'rules_v2' AND is_active").count() == 0  # los viejos no se borran, quedan inactivos
+
+
+def test_calendar_change_reaches_rows_that_are_already_there(spark, schema, trades_small_csv, monkeypatch):
+    t = _tables(schema)
+    _load(spark, t, trades_small_csv)
+    _run(spark, t, "p1")
+    saturday = lambda: spark.table(t["trades"]).where("trade_id = 'TXNfixture000007'").first().effective_trade_date  # noqa: E731
+    assert saturday() == date(2026, 1, 9)
+
+    monkeypatch.setitem(config.MARKET_HOLIDAYS, date(2026, 1, 9), "feriado de prueba")
+    _run(spark, t, "p2")
+
+    assert saturday() == date(2026, 1, 8)
+
+
+def test_new_file_deactivates_events_of_flags_that_are_gone(spark, schema, tmp_path, trades_small_csv):
+    t = _tables(schema)
+    _load(spark, t, trades_small_csv)
+    _run(spark, t, "p1")
+    total_before = spark.table(t["quality_events"]).count()
+
+    lines = trades_small_csv.read_text(encoding="utf-8").splitlines()
+    base = next(line for line in lines if "TXNfixture000007" in line)
+    extra = [base.replace("TXNfixture000007", f"TXNnuevo{i:04d}").replace(",2,19625.8112,", f",{100000 + i},19625.8112,") for i in range(30)]
+    second_file = tmp_path / "mas.csv"
+    second_file.write_text("\n".join([lines[0], *extra]) + "\n", encoding="utf-8")
+    _load(spark, t, second_file)
+    _run(spark, t, "p2")
+
+    events = spark.table(t["quality_events"])
+    assert events.where("NOT is_active").count() > 0
+    assert events.count() >= total_before  # no se borra ninguno
+    check = silver.reconciliation(spark.table(t["trades_raw"]), spark.table(t["trades"]), events)
+    assert check["active_events_without_flag"] == check["severe_flags_without_event"] == 0
+
+
+def test_rows_without_id_go_through_and_rerun_changes_nothing(spark, schema, tmp_path, trades_small_csv):
+    t = _tables(schema)
+    lines = trades_small_csv.read_text(encoding="utf-8").splitlines()
+    path = tmp_path / "sin_id.csv"
+    path.write_text("\n".join([lines[0], lines[1].replace("TXNfixture000001", ""), lines[2]]) + "\n", encoding="utf-8")
+    _load(spark, t, path)
+
+    first = _run(spark, t, "p1")
+    second = _run(spark, t, "p2")
+
+    assert first["silver_inserted"] == 2
+    assert second["silver_inserted"] == second["silver_updated"] == 0
+    row = spark.table(t["trades"]).where("trade_id IS NULL").first()
+    assert "DQ002_REQUIRED_NULL" in row.quality_flags and row.quality_status == "CRITICAL"

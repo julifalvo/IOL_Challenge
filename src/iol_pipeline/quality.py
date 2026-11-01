@@ -22,16 +22,17 @@ def eligible_for_baselines() -> Column:
     for name in config.TRADES_CONTRACT:
         required = required & ~_blank(name)
     return (required & F.col("trade_ts_utc").isNotNull() & F.col("extra_fields").isNull() & (F.col("_id_versions") <= 1)
-            & (F.col("qty") > 0) & (F.col("price") > 0) & F.col("currency_code").isin(list(config.CURRENCIES)))
+            & (F.col("qty") > 0) & (F.col("price") > 0) & F.col("gross_amount").isNotNull()
+            & F.col("currency_code").isin(list(config.CURRENCIES)))
 
 
-def compute_baselines(typed: DataFrame, rules_version: str = config.RULES_VERSION) -> DataFrame:
+def compute_baselines(typed: DataFrame) -> DataFrame:
     """Estadísticas de DQ020, DQ021 y DQ022: una fila por (regla, grupo). Se persisten para poder explicar cada marca."""
     eligible = typed.where(eligible_for_baselines()).select(
         "symbol", "asset_type_rule", "currency_code", F.col("price").cast("double").alias("price"),
         F.col("qty").cast("double").alias("qty"), F.log(F.col("qty").cast("double") * F.col("price").cast("double")).alias("log_amount"))
 
-    scale = (eligible.groupBy(F.col("symbol").alias("group_key"))
+    scale = (eligible.withColumn("group_key", F.concat_ws("|", "symbol", "currency_code")).groupBy("group_key")
              .agg(F.median("price").alias("median_value"), F.count("*").alias("n"))
              .select(F.lit(SCALE).alias("rule_code"), "group_key", "median_value", F.lit(None).cast("double").alias("mad_value"),
                      F.lit(None).cast("double").alias("limit_value"), "n"))
@@ -47,7 +48,7 @@ def compute_baselines(typed: DataFrame, rules_version: str = config.RULES_VERSIO
                 .select(F.lit(QUANTITY).alias("rule_code"), "group_key", F.lit(None).cast("double").alias("median_value"),
                         F.lit(None).cast("double").alias("mad_value"), "limit_value", "n"))
 
-    return scale.unionByName(amount).unionByName(quantity).withColumn("rules_version", F.lit(rules_version))
+    return scale.unionByName(amount).unionByName(quantity).withColumn("rules_version", F.lit(config.RULES_VERSION))
 
 
 def with_baseline_values(df: DataFrame, baselines: DataFrame) -> DataFrame:
@@ -55,16 +56,17 @@ def with_baseline_values(df: DataFrame, baselines: DataFrame) -> DataFrame:
     def only(code: str) -> DataFrame:
         return baselines.where(F.col("rule_code") == code)
 
-    scale = only(SCALE).select(F.col("group_key").alias("symbol"), F.col("median_value").alias("symbol_median"))
+    scale = only(SCALE).select(F.col("group_key").alias("_scale_group"), F.col("median_value").alias("symbol_median"))
     amount = only(AMOUNT).select(F.col("group_key").alias("_amount_group"), F.col("median_value").alias("_log_median"), F.col("mad_value").alias("_log_mad"))
     quantity = only(QUANTITY).select(F.col("group_key").alias("asset_type_rule"), F.col("limit_value").alias("qty_limit"))
     log_amount = F.log(F.col("qty").cast("double") * F.col("price").cast("double"))
     return (df.withColumn("_amount_group", F.concat_ws("|", "asset_type_rule", "currency_code"))
-            .join(scale, "symbol", "left").join(amount, "_amount_group", "left").join(quantity, "asset_type_rule", "left")
+            .withColumn("_scale_group", F.concat_ws("|", "symbol", "currency_code"))
+            .join(scale, "_scale_group", "left").join(amount, "_amount_group", "left").join(quantity, "asset_type_rule", "left")
             .withColumn("price_ratio", F.when(F.col("price") > 0, F.col("price").cast("double") / F.col("symbol_median")))
             .withColumn("robust_z", F.when((F.col("_log_mad") > 0) & (F.col("qty") > 0) & (F.col("price") > 0),
                                            config.QUALITY_PARAMS["robust_z_constant"] * (log_amount - F.col("_log_median")) / F.col("_log_mad")))
-            .drop("_amount_group", "_log_median", "_log_mad"))
+            .drop("_amount_group", "_scale_group", "_log_median", "_log_mad"))
 
 
 def row_rules() -> dict[str, Column]:
@@ -78,14 +80,15 @@ def row_rules() -> dict[str, Column]:
         "DQ002_REQUIRED_NULL": required_blank,
         "DQ003_TS_UNPARSEABLE": ~_blank("fecha") & F.col("trade_ts_utc").isNull(),
         "DQ004_ID_CONFLICT": F.col("_id_versions") > 1,
-        "DQ005_NUMERIC_UNPARSEABLE": (~_blank("cantidad") & F.col("qty").isNull()) | (~_blank("precio") & F.col("price").isNull()),
+        "DQ005_NUMERIC_UNPARSEABLE": ((~_blank("cantidad") & F.col("qty").isNull()) | (~_blank("precio") & F.col("price").isNull())
+                                      | (F.col("qty").isNotNull() & F.col("price").isNotNull() & F.col("gross_amount").isNull())),
         "DQ006_NON_POSITIVE": (F.col("qty") <= 0) | (F.col("price") <= 0),
         "DQ007_DOMAIN_INVALID": ((~_blank("tipoTran") & ~F.trim("tipoTran").isin(list(config.SIDES)))
                                  | (~_blank("moneda") & ~F.upper(F.trim("moneda")).isin(list(config.CURRENCIES)))
                                  | (~_blank("origen") & ~F.trim("origen").isin(list(config.CHANNELS)))),
         "DQ008_MALFORMED_ROW": F.col("extra_fields").isNotNull(),
-        "DQ010_SATURDAY": day_of_week == 7,
-        "DQ011_SUNDAY": day_of_week == 1,
+        "DQ010_SATURDAY": day_of_week == calendar.SPARK_SATURDAY,
+        "DQ011_SUNDAY": day_of_week == calendar.SPARK_SUNDAY,
         "DQ012_MARKET_HOLIDAY": F.col("trade_date_local").isin(list(config.MARKET_HOLIDAYS)),
         "DQ013_OUTSIDE_SESSION": F.col("trade_ts_local").isNotNull() & ~calendar.in_session("trade_ts_local"),
         "DQ014_OUTSIDE_CALENDAR": F.col("trade_date_local").isNotNull() & F.col("effective_trade_date").isNull(),
@@ -110,7 +113,8 @@ def apply_rules(typed: DataFrame, baselines: DataFrame) -> DataFrame:
     flags = F.array(*[F.when(condition, F.lit(code)) for code, condition in rules.items()])
     rank_of = F.create_map(*[F.lit(v) for pair in config.SEVERITY_RANK.items() for v in pair])
     ranks = [F.when(condition, rank_of[rule_severity(code)]).otherwise(0) for code, condition in rules.items()]
-    status_of = F.create_map(*[F.lit(v) for pair in {0: "OK", 1: "WARNING", 2: "ERROR", 3: "CRITICAL"}.items() for v in pair])
+    status_by_rank = {rank: name for name, rank in config.SEVERITY_RANK.items() if name != "INFO"}  # INFO solo cuenta como OK
+    status_of = F.create_map(*[F.lit(v) for pair in status_by_rank.items() for v in pair])
     return (with_values
             .withColumn("quality_flags", F.filter(flags, lambda flag: flag.isNotNull()))
             .withColumn("quality_status", status_of[F.greatest(*ranks)]))
@@ -138,7 +142,7 @@ EVENT_DETAILS = {
 
 def build_events(silver: DataFrame, bronze: DataFrame, baselines: DataFrame, pipeline_run_id: str) -> DataFrame:
     """Una fila por (operación, versión, regla) con severidad WARNING o mayor. `event_id` es determinista."""
-    raw = bronze.select("record_hash", *[c for c in ("fecha", "tipoTran", "moneda", "origen", "cantidad", "precio", "descripcion_titulo", "simbolo_titulo", "extra_fields")])
+    raw = bronze.select("record_hash", "fecha", "tipoTran", "moneda", "origen", "cantidad", "precio", "descripcion_titulo", "simbolo_titulo", "extra_fields")
     source = with_baseline_values(silver, baselines).join(raw, "record_hash")
     severe = [code for code, severity in config.RULE_SEVERITY.items() if severity != "INFO" and code in EVENT_DETAILS]
     exploded = source.withColumn("rule_code", F.explode("quality_flags")).where(F.col("rule_code").isin(severe))
@@ -152,4 +156,4 @@ def build_events(silver: DataFrame, bronze: DataFrame, baselines: DataFrame, pip
     return exploded.select(
         F.sha2(F.concat_ws("|", F.coalesce("trade_id", F.lit("")), "record_hash", "rule_code", F.lit(config.RULES_VERSION)), 256).alias("event_id"),
         F.lit(pipeline_run_id).alias("pipeline_run_id"), "trade_id", "record_hash", "rule_code", severity.alias("severity"),
-        details.alias("details_json"), F.lit(config.RULES_VERSION).alias("rules_version"))
+        details.alias("details_json"), F.lit(config.RULES_VERSION).alias("rules_version"), F.lit(True).alias("is_active"))

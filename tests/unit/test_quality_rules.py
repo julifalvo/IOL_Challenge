@@ -46,7 +46,9 @@ SCENARIOS = {
     "after_maturity": {"descripcion_titulo": "BONCAP VTO 05/01/2026", "simbolo_titulo": "T1"},
     "before_maturity": {"descripcion_titulo": "BONCAP VTO 30/06/26", "simbolo_titulo": "T2"},
     "warning_and_critical": {"fecha": "2026-01-10T15:00:00.000Z", "extra_fields": '["x"]'},
-    "overflow": {"cantidad": "9" * 20, "precio": "9" * 16},
+    "amount_does_not_fit": {"cantidad": "9" * 20, "precio": "9" * 16},
+    "price_too_precise": {"precio": "1.123456789"},
+    "price_eight_decimals": {"cantidad": "1", "precio": "0.00000001"},
     "many_desc_a": {"simbolo_titulo": "AZN", "descripcion_titulo": "Cedear Astrazeneca"},
     "many_desc_b": {"simbolo_titulo": "AZN", "descripcion_titulo": "Cedear Astra"},
     "conflict_a": {"id_transaccion": "CONFLICT", "precio": "100"}, "conflict_b": {"id_transaccion": "CONFLICT", "precio": "101"},
@@ -232,8 +234,22 @@ def test_highest_severity_wins(results):
     assert row.quality_status == "CRITICAL"
 
 
-def test_amount_overflow_is_null_and_does_not_raise(results):
-    assert results["overflow"].gross_amount is None
+def test_dq005_amount_that_does_not_fit_is_flagged(results):
+    row = results["amount_does_not_fit"]
+    assert row.qty is not None and row.price is not None and row.gross_amount is None
+    assert "DQ005_NUMERIC_UNPARSEABLE" in row.quality_flags
+    assert row.quality_status == "CRITICAL"
+
+
+def test_dq005_price_with_more_than_eight_decimals_is_not_rounded(results):
+    assert "DQ005_NUMERIC_UNPARSEABLE" in results["price_too_precise"].quality_flags
+    assert results["price_too_precise"].price is None
+
+
+def test_amount_keeps_the_eight_decimals_of_the_price(results):
+    row = results["price_eight_decimals"]
+    assert row.gross_amount == Decimal("0.00000001")
+    assert "DQ005_NUMERIC_UNPARSEABLE" not in row.quality_flags
 
 
 def test_maturity_date_from_description(spark):
@@ -283,6 +299,12 @@ def test_dq021_error_in_bonds_warning_in_options_and_negative(spark):
     assert found["GFGC72000F"].asset_type_rule == "OPCION" and found["GFGC72000F"].quality_status == "WARNING"
 
 
+def test_dq021_does_not_mix_currencies_of_a_symbol(spark):
+    ars = [{"simbolo_titulo": "AL30", "precio": str(876 + i)} for i in range(3)]
+    usd = [{"simbolo_titulo": "AL30", "moneda": "USD", "precio": str(0.61 + i / 100)} for i in range(3)]
+    assert not _flagged(_stats(spark, ars + usd), "DQ021_POSSIBLE_SCALE_ERROR")  # una mediana única marcaría los dólares
+
+
 def test_dq022_extreme_quantity_only_flags_the_tail(spark):
     rows = [{"cantidad": str(10 + i), "precio": "100"} for i in range(20)] + [{"cantidad": "99999", "precio": "100"}]
     assert [r.qty for r in _flagged(_stats(spark, rows), "DQ022_EXTREME_QTY")] == [Decimal(99999)]
@@ -306,4 +328,5 @@ def test_events_only_above_info_with_details_without_client_and_deterministic(sp
     assert json.loads(events[0].details_json) == {"trade_date_local": "2026-01-10", "effective_trade_date": "2026-01-09"}
     assert events[0].severity == "WARNING"
     assert "CLI" not in events[0].details_json
+    assert events[0].is_active is True
     assert quality.build_events(silver_df, br, baselines, "otra").first().event_id == events[0].event_id

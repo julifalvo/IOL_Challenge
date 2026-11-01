@@ -9,6 +9,8 @@ from pyspark.sql import functions as F
 from iol_pipeline import config
 
 SATURDAY = 5
+SPARK_SATURDAY = 7  # F.dayofweek: 1 = domingo
+SPARK_SUNDAY = 1
 
 
 def is_business_day(day: date) -> bool:

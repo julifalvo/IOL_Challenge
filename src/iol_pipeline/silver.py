@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from pyspark.sql import DataFrame, SparkSession
+from pyspark.sql import DataFrame, SparkSession, Window
 from pyspark.sql import functions as F
 
 from iol_pipeline import calendar, config, instruments, io, quality, segmentation
@@ -14,25 +14,28 @@ SILVER_COLUMNS = [
     "asset_type_rule", "maturity_date", "quality_flags", "quality_status", "rules_version", "record_hash", "ingestion_run_id",
     "silver_run_id", "processed_at",
 ]
-QUALITY_COLUMNS = ["quality_flags", "quality_status", "rules_version"]
+SILVER_KEYS = ["trade_id", "record_hash"]
+# Todo menos la corrida y la fecha: un cambio de calendario o de reglas tiene que llegar a las filas que ya están.
+COMPARED_COLUMNS = [c for c in SILVER_COLUMNS if c not in (*SILVER_KEYS, "silver_run_id", "processed_at")]
+EVENT_COMPARED_COLUMNS = ["severity", "details_json", "is_active"]
 
 
 def _text(name: str) -> F.Column:
     return F.nullif(F.trim(F.col(name)), F.lit(""))
 
 
-def _whole_number(text: F.Column) -> F.Column:
-    """DECIMAL(20,0), o null si tiene decimales: redondear cambiaría el dato sin aviso."""
+def _exact_decimal(text: F.Column, decimal_type: str) -> F.Column:
+    """El número en `decimal_type`, o null si no entra sin cambiarlo: redondear alteraría el dato sin aviso."""
     parsed = text.try_cast(config.DECIMAL_PARSE_TYPE)
-    whole = parsed.try_cast(config.QTY_TYPE)
-    return F.when(parsed == whole, whole)
+    converted = parsed.try_cast(decimal_type)
+    return F.when(parsed == converted, converted)
 
 
 def type_trades(bronze: DataFrame) -> DataFrame:
     """Tipado seguro y normalización. Lo que no parsea queda en null y lo marca una regla, nunca lanza excepción."""
     side_of = F.create_map(*[F.lit(v) for pair in config.SIDES.items() for v in pair])
-    qty = _whole_number(F.trim("cantidad"))
-    price = F.trim("precio").try_cast(config.PRICE_TYPE)
+    qty = _exact_decimal(F.trim("cantidad"), config.QTY_TYPE)
+    price = _exact_decimal(F.trim("precio"), config.PRICE_TYPE)
     typed = (calendar.with_trade_dates(bronze)
              .withColumn("trade_id", _text("id_transaccion"))
              .withColumn("side", F.try_element_at(side_of, F.trim("tipoTran")))
@@ -43,7 +46,7 @@ def type_trades(bronze: DataFrame) -> DataFrame:
              .withColumn("channel_code", segmentation.channel_code(F.trim("origen")))
              .withColumn("qty", qty)
              .withColumn("price", price)
-             .withColumn("gross_amount", F.try_multiply(qty, price).try_cast(config.AMOUNT_TYPE))
+             .withColumn("gross_amount", F.try_multiply(qty, price.try_cast(config.AMOUNT_PRICE_TYPE)).try_cast(config.AMOUNT_TYPE))
              .withColumn("asset_type_rule", instruments.asset_type_by_rules(F.col("symbol"), F.col("description_raw")))
              .withColumn("maturity_date", instruments.maturity_date(F.col("description_raw"))))
 
@@ -66,25 +69,28 @@ def build_silver(typed: DataFrame, baselines: DataFrame, silver_run_id: str, pro
 def run_silver(spark: SparkSession, bronze_table: str, silver_table: str, baselines_table: str, events_table: str, pipeline_run_id: str = "") -> dict:
     """Reaplica las reglas sobre Bronze completo. Con el mismo input deja las tres tablas idénticas.
 
-    Actualiza una fila si cambian sus flags, no solo la versión de reglas: una versión nueva de una operación
-    tiene que marcar `DQ004` también en la fila que ya estaba.
+    Actualiza una fila si cambia cualquier columna derivada: una versión nueva de una operación tiene que marcar
+    `DQ004` también en la fila que ya estaba. Falla si no hay estadísticas: sin ellas, DQ020, DQ021 y DQ022 no
+    marcarían nada, sin aviso.
     """
     bronze = spark.table(bronze_table)
     typed = type_trades(bronze)
     baselines_result = io.write_delta_upsert(spark, quality.compute_baselines(typed), baselines_table,
                                              ["rules_version", "rule_code", "group_key"], ["median_value", "mad_value", "limit_value", "n"])
     baselines = spark.table(baselines_table).where(F.col("rules_version") == config.RULES_VERSION)
+    if not baselines.take(1) and typed.where(quality.eligible_for_baselines()).take(1):
+        raise ValueError(f"{baselines_table} no tiene estadísticas de {config.RULES_VERSION}, y hay filas para calcularlas")
     silver = build_silver(typed, baselines, pipeline_run_id, datetime.now(timezone.utc))
-    silver_result = io.write_delta_upsert(spark, silver, silver_table, ["trade_id", "record_hash"], QUALITY_COLUMNS)
+    silver_result = io.write_delta_upsert(spark, silver, silver_table, SILVER_KEYS, COMPARED_COLUMNS)
     events = quality.build_events(spark.table(silver_table), bronze, baselines, pipeline_run_id)
-    events_result = io.write_delta_merge(spark, events, events_table, ["event_id"])
+    events_result = io.write_delta_upsert(spark, events, events_table, ["event_id"], EVENT_COMPARED_COLUMNS, deactivate_column="is_active")
 
     bronze_rows, silver_rows = bronze.count(), spark.table(silver_table).count()
     if bronze_rows != silver_rows:
         raise ValueError(f"Silver no es 1:1 con Bronze: {bronze_rows} filas en Bronze, {silver_rows} en Silver")
     return {"bronze_rows": bronze_rows, "silver_rows": silver_rows, "silver_inserted": silver_result["rows_inserted"],
             "silver_updated": silver_result["rows_updated"], "baselines_updated": baselines_result["rows_updated"],
-            "baselines_inserted": baselines_result["rows_inserted"], "events_inserted": events_result["rows_inserted"]}
+            "baselines_inserted": baselines_result["rows_inserted"], "events_inserted": events_result["rows_inserted"], "events_updated": events_result["rows_updated"]}
 
 
 # --- Salidas del notebook: sin IDs de cliente ni de operación ----------------------
@@ -110,16 +116,26 @@ def status_distribution(silver: DataFrame) -> DataFrame:
             .withColumn("pct_of_rows", F.round(F.col("rows") / F.lit(total) * 100, 3)).orderBy("quality_status"))
 
 
+def event_examples(events: DataFrame) -> DataFrame:
+    """Algunos eventos activos de cada regla de ejemplo, sin IDs. Sin esto, DQ010 tapa a las demás por volumen."""
+    order = Window.partitionBy("rule_code").orderBy("details_json")
+    return (events.where(F.col("is_active") & F.col("rule_code").isin(list(config.EVENT_EXAMPLE_RULES)))
+            .withColumn("_rank", F.row_number().over(order)).where(F.col("_rank") <= config.EVENT_EXAMPLES_PER_RULE)
+            .select("rule_code", "severity", "details_json").orderBy("rule_code", "details_json"))
+
+
 def reconciliation(bronze: DataFrame, silver: DataFrame, events: DataFrame) -> dict[str, int]:
     """Invariantes de docs/quality_rules.md. Todas las diferencias tienen que dar 0."""
     keys = ["record_hash"]
     severe_flags = [code for code, severity in config.RULE_SEVERITY.items() if severity != "INFO"]
     flagged = silver.withColumn("rule_code", F.explode("quality_flags")).where(F.col("rule_code").isin(severe_flags))
+    active = events.where("is_active")
     return {
         "bronze_rows": bronze.count(),
         "silver_rows": silver.count(),
         "bronze_not_in_silver": bronze.join(silver, keys, "left_anti").count(),
         "silver_not_in_bronze": silver.join(bronze, keys, "left_anti").count(),
         "not_ok_without_flag": silver.where((F.col("quality_status") != "OK") & (F.size("quality_flags") == 0)).count(),
-        "severe_flags_without_event": flagged.join(events, ["record_hash", "rule_code"], "left_anti").count(),
+        "severe_flags_without_event": flagged.join(active, ["record_hash", "rule_code"], "left_anti").count(),
+        "active_events_without_flag": active.join(flagged, ["record_hash", "rule_code"], "left_anti").count(),
     }
