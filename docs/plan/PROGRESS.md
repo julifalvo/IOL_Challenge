@@ -7,7 +7,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 | 00 Entorno | hecho (local + Databricks) | 99/99 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 10/11 OK, 1 inconcluso (2026-11-01) | Review hecho. Outputs en `notebooks_executed/`. 2 bajas abiertas: fixture (etapa 03) y triple evaluación del MERGE (benchmark) |
 | 01 Profiling + arquitectura | parcial | 99/99 passed (2026-11-01) | `01_data_profiling` y `00_quotes_spike` OK (2026-11-01) | Review hecho. **Pendiente, por dependencia:** benchmark, §6 de `ARCHITECTURE.md` y ADR-010 necesitan Silver y Gold (día 5 de `PLAN.md`). 8 bajas abiertas (ver log) |
 | 02 Bronze | hecho (local + Databricks) | 132/132 passed en la última suite completa; 33/33 de Bronze después de las últimas correcciones (2026-11-01) | `02_ingest_bronze` OK (2026-11-01) | Review hecho. Outputs en `notebooks_executed/02_ingest_bronze.ipynb` |
-| 03 Silver + calidad | código listo | 207/207 passed (2026-11-01) | **no ejecutado** | Review hecho. Corrida local sobre el CSV completo OK. Falta correr `03_quality_silver` en Free Edition. `DQ030` y `DQ033` pasan a la etapa 04 |
+| 03 Silver + calidad | hecho (local + Databricks) | 207/207 passed (2026-11-01) | `03_quality_silver` OK (2026-11-01) | Review hecho. Outputs en `notebooks_executed/03_quality_silver.ipynb`. `DQ030` y `DQ033` pasan a la etapa 04 |
 | 04 Instrumentos | pendiente | — | — | |
 | 05 Cotizaciones | pendiente | — | — | |
 | 06 Gold + SCD2 | pendiente | — | — | |
@@ -207,3 +207,9 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - `DQ021` agrupa por símbolo y moneda. `03_quality_silver` tiene el widget `demo_rerun`. Se sacaron literales, se actualizó el spec 03 y se sumó un test de filas sin ID.
   - Tests locales: 207 passed. La corrida sobre el CSV completo da los mismos números, y `active_events_without_flag` = 0.
   - La suite completa tarda 17 min 56 s. No se probó si baja con otra configuración de Spark en los tests. Para cambios chicos: `pytest -q -m "not integration"`.
+- 2026-11-01 — **Etapa 03 corrida en Free Edition.** El código del `.ipynb` es idéntico al del repo, y los números coinciden con Spark local.
+  - 100.000 filas en Silver, 0 CRITICAL. `quality_status`: 89.290 OK, 10.702 WARNING, 8 ERROR.
+  - Reglas: DQ010 10.255, DQ013 70.409, DQ020 437, DQ021 8 ERROR y 5 WARNING, DQ022 105, DQ031 63. Las demás, 0.
+  - Reconciliación sin diferencias, en las dos direcciones. La segunda corrida no toca nada.
+  - `TIMESTAMP_NTZ` en Delta sobre Unity Catalog funciona en serverless.
+  - Criterios de aceptación: los 4 ✅, con `DQ030` y `DQ033` en la etapa 04. — spec 03, `quality_rules.md`
