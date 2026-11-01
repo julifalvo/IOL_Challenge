@@ -18,7 +18,18 @@ Las reglas y la lista de acciones de ADR-004 dejan solo 10 símbolos y 371 opera
 ## Evaluación
 - A ciegas: el modelo no recibe `rule_asset_type` ni los hermanos. Si los viera, los copiaría y la accuracy saldría inflada.
 - La muestra de 60 símbolos cubre todos los tipos salvo opciones, que no se consultan, e incluye símbolos en `NEEDS_REVIEW`.
-- **Límite de la muestra:** las etiquetas las escribió Claude Code, sin revisión humana independiente. Mide la coincidencia con esas etiquetas. Parte de la muestra también tiene el contraste de las listas de data912, y lo demás se apoya en la descripción del dataset.
+- **Límite de la muestra:** las etiquetas las escribió Claude Code, sin revisión humana independiente. Mide la coincidencia con esas etiquetas. Parte de la muestra también tiene el contraste de las listas de data912, y lo demás se apoya en la descripción del dataset. Las etiquetas no se tocaron después de ver los resultados.
+
+### Elección del modelo [MEDIDO, Free Edition, 2026-11-01]
+| Modelo | `asset_type` (60) | Ticker (22 CEDEARs) | Error principal |
+|---|---|---|---|
+| `databricks-qwen3-next-80b-a3b-instruct` | 54 (90,0%) | 21 (95,5%) | Cupones PBI como letras |
+| `databricks-gpt-oss-120b` | 50 (83,3%) | 21 (95,5%) | ONs como subsoberanos u `OTRO` |
+| `databricks-meta-llama-3-3-70b-instruct` | 47 (78,3%) | 21 (95,5%) | Las 8 ONs como subsoberanos |
+
+- Se usa Qwen. Con 60 símbolos la diferencia es orientativa; el error de ONs de los otros dos es sistemático.
+- El ticker no separa a los modelos, y copiar el símbolo ya acierta 20 de 22 (90,9%), contra 21 de 22 de los modelos. La muestra casi no mide esta capacidad: solo tiene 2 casos no triviales.
+- Issuer y sector no se evaluaron contra etiquetas.
 
 ## Por qué el principal es clasificación y no el resumen
 Está **dentro** del pipeline: mejora `dim_instrument`, el mapeo a la fuente de cotización y los cortes del análisis. El resumen es consumo; útil, pero no cambia la calidad del dato.

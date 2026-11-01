@@ -192,5 +192,6 @@ def test_score_counts_right_wrong_and_unusable():
     result = ai.score(labels, runs, MODEL)
     assert result["asset_type_accuracy"] == 0.5  # YPFD mal, y AL30 sin respuesta
     assert result["ticker_accuracy"] == 1.0  # BRK-B y BRK.B son el mismo ticker
+    assert result["ticker_baseline_symbol"] == 1.0  # BRKB también coincide con BRK.B: copiar el símbolo acierta los dos
     assert result["unusable"] == 1
     assert "YPFD" in result["misses"] and "AL30" in result["misses"]

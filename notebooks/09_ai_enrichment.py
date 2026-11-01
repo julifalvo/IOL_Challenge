@@ -65,7 +65,7 @@ print("Mapeo:", instruments.run_instruments(spark, silver_table, mapping_table, 
 
 runs = spark.table(runs_table)
 display(ai.status_summary(runs))
-display(ai.problem_examples(runs))
+display(ai.problem_examples(runs, config.AI_MODEL))
 
 # COMMAND ----------
 

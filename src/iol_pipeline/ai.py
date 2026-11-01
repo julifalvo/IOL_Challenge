@@ -262,8 +262,11 @@ def score(labels: list[dict], runs: list[dict], model: str, prompt_version: str 
                 right_ticker += 1
             elif usable:
                 misses.append(f"{label['symbol']}: ticker {output.get('underlying_ticker_foreign')} (esperado {label['underlying_ticker_foreign']})")
+    trivial = sum(_same_ticker(label["symbol"], label["underlying_ticker_foreign"]) for label in labels if label["asset_type"] == "CEDEAR")
     return {"model": model, "labeled": len(labels), "asset_type_accuracy": round(right_type / len(labels), 4), "cedears": cedears,
-            "ticker_accuracy": round(right_ticker / cedears, 4) if cedears else None, "unusable": unusable, "misses": "; ".join(misses)}
+            "ticker_accuracy": round(right_ticker / cedears, 4) if cedears else None,
+            "ticker_baseline_symbol": round(trivial / cedears, 4) if cedears else None,  # lo que se acierta copiando el símbolo
+            "unusable": unusable, "misses": "; ".join(misses)}
 
 
 def run_evaluation(spark: SparkSession, runs_table: str, models: tuple[str, ...], call_model_for: Callable[[str], CallModel], pipeline_run_id: str = "") -> list[dict]:
@@ -294,7 +297,7 @@ def status_summary(runs: DataFrame, component: str = COMPONENT_ENRICHMENT) -> Da
     return runs.where(F.col("component") == component).groupBy("model", "validation_status").count().orderBy("model", "validation_status")
 
 
-def problem_examples(runs: DataFrame, component: str = COMPONENT_ENRICHMENT) -> DataFrame:
-    """Lo que la validación no aceptó, con el motivo: lo que muestra que la validación hace algo."""
-    return (runs.where((F.col("component") == component) & (F.col("validation_status") != VALID))
+def problem_examples(runs: DataFrame, model: str, component: str = COMPONENT_ENRICHMENT) -> DataFrame:
+    """Lo que la validación no aceptó en el modelo vigente, con el motivo."""
+    return (runs.where((F.col("component") == component) & (F.col("model") == model) & (F.col("validation_status") != VALID))
             .select("symbol", "validation_status", "error").orderBy("validation_status", "symbol"))
