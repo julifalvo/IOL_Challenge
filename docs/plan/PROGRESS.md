@@ -6,7 +6,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 |---|---|---|---|---|
 | 00 Entorno | hecho (local + Databricks) | 99/99 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 10/11 OK, 1 inconcluso (2026-11-01) | Review hecho. Outputs en `notebooks_executed/`. 2 bajas abiertas: fixture (etapa 03) y triple evaluación del MERGE (benchmark) |
 | 01 Profiling + arquitectura | parcial | 99/99 passed (2026-11-01) | `01_data_profiling` y `00_quotes_spike` OK (2026-11-01) | Review hecho. **Pendiente, por dependencia:** benchmark, §6 de `ARCHITECTURE.md` y ADR-010 necesitan Silver y Gold (día 5 de `PLAN.md`). 8 bajas abiertas (ver log) |
-| 02 Bronze | pendiente | — | — | |
+| 02 Bronze | código listo | 124/124 passed (2026-11-01) | **no ejecutado** | Corrida local sobre el CSV completo OK. Falta correr `02_ingest_bronze` en Free Edition y `/review-stage 02` |
 | 03 Silver + calidad | pendiente | — | — | |
 | 04 Instrumentos | pendiente | — | — | |
 | 05 Cotizaciones | pendiente | — | — | |
@@ -153,3 +153,13 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
     - ❌ Benchmark 1x/10x/100x: **no ejecutado**, necesita Silver y Gold.
     - ❌ ADR-010: depende del benchmark.
   - El email del usuario ya no está en los `.ipynb` actuales, pero sigue en el historial de git (`8aaba06`), igual que en los datos de autor de los commits.
+- 2026-11-01 — **Etapa 02 implementada (local).**
+  - Código: `bronze.py`, `notebooks/02_ingest_bronze.py`, `tests/unit/test_bronze.py`, `tests/integration/test_idempotency.py`. 25 tests nuevos.
+  - **Cambio respecto del spec: `csv` en lugar de pandas.** Un test mostró que, si la primera fila trae campos de más, `pandas.read_csv` corre las columnas sin error y el esquema igual pasa [MEDIDO, pandas 3.1]. — ADR-002, spec 02
+  - Corrida con Spark 4.0.5 local sobre el CSV completo: 100.000 insertadas, y después 0 insertadas con 100.000 presentes. 100.000 pares (id, hash) distintos. `csv` y Spark leen las mismas filas, 0 diferencias. — ADR-002
+  - Criterios de aceptación:
+    - ⏳ Notebook 02 muestra `ingestion_runs` de 2 corridas: medido en local, **no ejecutado** en Free Edition.
+    - ⏳ `count(*) = 100000` tras ambas corridas: medido en local, **no ejecutado** en Free Edition.
+    - ⏳ `DESCRIBE DETAIL` muestra formato delta: medido en local, **no ejecutado** en Free Edition.
+    - ✅ Tests verdes: 124 passed.
+  - Sin probar en serverless: `spark.createDataFrame` con 100.000 tuplas por Spark Connect, y la lectura directa del Volume con `open()`.
