@@ -24,7 +24,7 @@ Tabla de mapeo explícita y versionada (`iol_ops.instrument_mapping`) construida
 - **Overrides:** se validan al leerlos y fallan si un valor no es válido o el símbolo no existe.
 - **Validación independiente:** el notebook 04 compara la clasificación con las listas por tipo de data912. La de acciones no cuenta como independiente: es la misma que usa la regla.
 
-**Resultado** [MEDIDO, Spark local]: 1.445 símbolos mapeados. `NEEDS_REVIEW` baja de 178 símbolos y 19.241 operaciones a 10 símbolos y 371 operaciones. Hay 403 variantes: 374 `USD_MEP` y 29 `USD_CCL`; 68 símbolos quedan `USD_OTHER`. 122 de las variantes salen de la regla por descripción, con cambio implícito de 1.191 a 1.645. De las 403, solo `TEAMD` (2.208, 3 operaciones) queda fuera de 1.000–2.000.
+**Resultado** [MEDIDO en Free Edition]: 1.445 símbolos mapeados. `NEEDS_REVIEW` baja de 178 símbolos y 19.241 operaciones a 10 símbolos y 371 operaciones. Hay 403 variantes: 374 `USD_MEP` y 29 `USD_CCL`; 68 símbolos quedan `USD_OTHER`. 122 de las variantes salen de la regla por descripción, con cambio implícito de 1.191 a 1.645. De las 403, solo `TEAMD` (2.208, 3 operaciones) queda fuera de 1.000–2.000.
 
 **Validación contra data912** [MEDIDO, 2026-11-01]: de 930 símbolos en sus listas independientes (CEDEARs, bonos, letras, ON), 923 coinciden, 7 quedan en `NEEDS_REVIEW` y 0 están mal clasificados.
 

@@ -10,7 +10,7 @@ Severidad → `quality_status` (se toma la máxima):
 
 Umbrales parametrizados en `src/iol_pipeline/config.py` (`QUALITY_PARAMS`), versión `rules_v1`.
 
-| Código | Severidad | Regla | Acción | Contexto / argumento | Observado (Spark local, CSV completo, 2026-11-01) |
+| Código | Severidad | Regla | Acción | Contexto / argumento | Observado (Free Edition, CSV completo, 2026-11-01) |
 |---|---|---|---|---|---|
 | DQ001_SCHEMA_MISMATCH | CRITICAL | Columnas ≠ contrato `trades_v1` | Run `FAILED_SCHEMA`: no se escribe Bronze y el archivo queda en landing | Un cambio de esquema rompe todo lo de aguas abajo | 0 |
 | DQ002_REQUIRED_NULL | CRITICAL | Nulo/vacío en cualquier campo | Marcar | Sin ID/fecha/símbolo no hay trazabilidad | 0 |

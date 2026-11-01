@@ -7,8 +7,8 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 | 00 Entorno | hecho (local + Databricks) | 99/99 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 10/11 OK, 1 inconcluso (2026-11-01) | Review hecho. Outputs en `notebooks_executed/`. 2 bajas abiertas: fixture (etapa 03) y triple evaluación del MERGE (benchmark) |
 | 01 Profiling + arquitectura | parcial | 99/99 passed (2026-11-01) | `01_data_profiling` y `00_quotes_spike` OK (2026-11-01) | Review hecho. **Pendiente, por dependencia:** benchmark, §6 de `ARCHITECTURE.md` y ADR-010 necesitan Silver y Gold (día 5 de `PLAN.md`). 8 bajas abiertas (ver log) |
 | 02 Bronze | hecho (local + Databricks) | 132/132 passed en la última suite completa; 33/33 de Bronze después de las últimas correcciones (2026-11-01) | `02_ingest_bronze` OK (2026-11-01) | Review hecho. Outputs en `notebooks_executed/02_ingest_bronze.ipynb` |
-| 03 Silver + calidad | hecho (local + Databricks) | 207/207 passed (2026-11-01) | `03_quality_silver` OK (2026-11-01) | Review hecho. **A reejecutar con la etapa 04:** cambian `asset_type_rule`, DQ020 y DQ022 |
-| 04 Instrumentos | código listo | 285/285 passed (2026-11-01) | **no ejecutado** | Review hecho. Corrida local sobre el CSV completo OK. Falta correr `03_quality_silver` y `04_instruments` en Free Edition. `NEEDS_REVIEW` se cierra en la etapa 09 |
+| 03 Silver + calidad | hecho (local + Databricks) | 285/285 passed (2026-11-01) | `03_quality_silver` OK con la clasificación de la etapa 04 (2026-11-01) | Review hecho. **Falta exportar con outputs:** el `.ipynb` del repo tiene los números anteriores (DQ020 437, DQ022 105) |
+| 04 Instrumentos | hecho (local + Databricks), salvo `NEEDS_REVIEW` | 285/285 passed (2026-11-01) | `04_instruments` OK (2026-11-01) | Review hecho. **Falta exportar con outputs.** Quedan 10 símbolos en `NEEDS_REVIEW` para la etapa 09 |
 | 05 Cotizaciones | pendiente | — | — | |
 | 06 Gold + SCD2 | pendiente | — | — | |
 | 07 Monitoreo + performance | pendiente | — | — | |
@@ -246,3 +246,10 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - No puede ejecutar notebooks sin Databricks Jobs, que el challenge prohíbe (R-37): en serverless, el CLI solo ejecuta con `jobs submit`.
   - No puede exportar outputs: `workspace export --format JUPYTER` devuelve 0 outputs [MEDIDO]. Correr y exportar se hace desde la interfaz.
   - Al correr un notebook, Databricks le agrega un encabezado con `environment_version`. Si ese notebook cambió en el repo, el Pull da conflicto, sin que haya un cambio real.
+- 2026-11-01 — **Etapas 03 y 04 corridas en Free Edition,** con el código de `main`. Los números coinciden con Spark local.
+  - `03_quality_silver`: 100.000 filas, 0 CRITICAL; 89.312 OK, 10.680 WARNING, 8 ERROR. DQ020 415, DQ022 107, DQ030 y DQ033 en 0. La primera corrida actualizó 18.933 filas, porque cambió la clasificación; la segunda no toca nada. Reconciliación sin diferencias.
+  - `04_instruments`: 1.445 símbolos, 10 en `NEEDS_REVIEW`. La segunda corrida no toca nada, y Silver reaplicado tampoco. Solo `TEAMD` queda fuera del rango de cambio implícito.
+  - Validación contra data912 desde serverless: 930 símbolos en las listas independientes, 923 coinciden, 7 en `NEEDS_REVIEW`, 0 mal clasificados.
+  - `local_stocks.csv` se lee bien desde serverless, y las listas de data912 se bajan sin errores.
+  - Criterios de la etapa 03: los 4 ✅. Etapa 04: ✅ ADR-004 y tests; ❌ sin `NEEDS_REVIEW`, se cierra en la etapa 09.
+  - **Falta:** exportar con outputs `03_quality_silver.ipynb` y `04_instruments.ipynb` a `notebooks_executed/`, desde la interfaz (spec 11).
