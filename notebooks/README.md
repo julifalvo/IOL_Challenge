@@ -32,6 +32,6 @@ import json
 dbutils.notebook.exit(json.dumps({"status": "SUCCESS", "rows_out": 0}))
 ```
 
-Antes de la primera corrida (una vez por workspace): `00_setup` (schemas + Volume + chequeo del CSV) y `00_smoke_test` (evidencia del entorno; usa `00_smoke_test_child`).
+Antes de la primera corrida (una vez por workspace): `00_setup` (schemas + Volume + chequeo del CSV) y `00_smoke_test` (evidencia del entorno; usa `00_smoke_test_child`). `00_quotes_spike` prueba los proveedores de cotizaciones (ADR-008).
 
 Orden: `00_run_pipeline` → `01_data_profiling` → `02_ingest_bronze` → `03_quality_silver` → `04_instruments` → `09_ai_enrichment` → `05_market_quotes` → `06_model_gold` → `07_quality_gate_monitoring` → `08_business_eda_sql` → `09b_ai_eda_summary` · `90_benchmark` (aparte).
