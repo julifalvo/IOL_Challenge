@@ -79,6 +79,18 @@ def test_merge_rejects_duplicate_keys_in_source(spark, schema):
     assert not spark.catalog.tableExists(target)
 
 
+def test_merge_rejects_columns_the_target_does_not_have(spark, schema):
+    target = f"{schema}.narrow"
+    io.write_delta_merge(spark, spark.createDataFrame([("T1", "h1", "a")], SCHEMA), target, ["trade_id"])
+    wider = spark.createDataFrame([("T2", "h2", "b", "nueva")], SCHEMA + ", extra string")
+
+    with pytest.raises(ValueError, match="extra"):
+        io.write_delta_merge(spark, wider, target, ["trade_id"])
+
+    assert spark.table(target).count() == 1
+    assert "extra" not in spark.table(target).columns
+
+
 def test_merge_validates_keys(spark, schema):
     df = spark.createDataFrame([("T1", "h1", "a")], SCHEMA)
     with pytest.raises(ValueError, match="ausentes"):

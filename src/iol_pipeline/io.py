@@ -51,6 +51,7 @@ def write_delta_merge(spark: SparkSession, df: DataFrame, target: str, keys: lis
     - Si `df` trae la misma clave más de una vez, falla: elegir una fila sería sobrescribir
       en silencio. Quien llama decide qué hacer con esos duplicados y los registra.
     - Si `target` no existe, lo crea vacío con el esquema de `df` (Delta) y después hace el MERGE.
+    - Si `df` trae columnas que `target` no tiene, falla: `INSERT *` las ignoraría sin error.
     """
     if not keys:
         raise ValueError("write_delta_merge necesita al menos una clave")
@@ -65,6 +66,11 @@ def write_delta_merge(spark: SparkSession, df: DataFrame, target: str, keys: lis
 
     if not spark.catalog.tableExists(target):
         df.limit(0).write.format("delta").saveAsTable(target)
+
+    target_columns = {c.lower() for c in spark.table(target).columns}
+    extra = [c for c in df.columns if c.lower() not in target_columns]
+    if extra:
+        raise ValueError(f"Columnas que {target} no tiene: {extra}; no se escribe")
 
     view = f"_merge_src_{uuid.uuid4().hex}"
     df.createOrReplaceTempView(view)
