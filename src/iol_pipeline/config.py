@@ -116,7 +116,29 @@ QUALITY_PARAMS = {
 
 # --- Cotizaciones (ADR-005, ADR-009) ----------------------------------------------
 MAX_QUOTE_AGE_BDAYS = 3
-ABOVE_MARKET_TOLERANCE = 0.005         # [SUPUESTO] calibrar con rango diario por asset_type
+ABOVE_MARKET_TOLERANCE = 0.005         # [SUPUESTO] tipos sin rango medido: hoy no tienen cotizaciones
+ABOVE_MARKET_TOLERANCE_BY_TYPE = {     # mitad de la mediana del rango diario (high - low) / close, medido (ADR-009)
+    "ACCION_LOCAL": 0.026, "CEDEAR": 0.015, "BONO_SOBERANO": 0.008, "BONO_SUBSOBERANO": 0.013, "LETRA_LECAP_BONCAP": 0.006, "ON": 0.009, "WARRANT": 0.038,
+}
+ANALYTICS_ELIGIBLE_STATUSES = ("OK", "WARNING")
+QUOTE_PROVIDERS_BY_TYPE = {            # prioridad fijada de antemano: se usa la primera serie que valida (ADR-008)
+    "CEDEAR": ("data912", "yahoo", "byma_open_data"),
+    "ACCION_LOCAL": ("data912", "yahoo", "byma_open_data"),
+    "BONO_SOBERANO": ("data912", "byma_open_data"),
+    "BONO_SUBSOBERANO": ("data912", "byma_open_data"),
+    "LETRA_LECAP_BONCAP": ("byma_open_data",),
+    "ON": ("byma_open_data",),
+    "OPCION": ("byma_open_data",),
+    "WARRANT": ("byma_open_data",),
+    "OTRO": ("byma_open_data",),
+}
+QUOTE_SCALE_CANDIDATES = (0.01, 0.1, 1 / 3, 1.0, 3.0, 10.0, 100.0)  # los factores medidos (ADR-005)
+QUOTE_MIN_DAYS = 5                     # días comparables para validar una serie; con menos queda THIN (ADR-008)
+QUOTE_PRICE_DECIMALS = 6
+QUOTE_LOOKBACK_CALENDAR_DAYS = 10      # corta el join por rango; alcanza con holgura para MAX_QUOTE_AGE_BDAYS y un feriado largo
+QUOTE_INDEX_MARGIN_DAYS = 10
+QUOTE_WRITE_BATCH = 200                # pedidos por proveedor entre escrituras
+QUOTE_COVERAGE_TOP_N = 30              # filas de la tabla de cobertura en el notebook y el README (spec 05)
 SCALE_SANITY_RANGE = (0.5, 2.0)
 QUOTES_FROM = date(2025, 12, 15)
 QUOTES_TO = DATA_CUTOFF

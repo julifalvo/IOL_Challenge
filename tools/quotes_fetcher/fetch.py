@@ -1,6 +1,6 @@
 """Descarga cotizaciones fuera de Databricks (ADR-008, plan B). Mismo contrato que el pipeline.
 
-Guarda en `data/quotes_raw/<provider>/<símbolo>.json` y lleva `manifest.csv`, una fila por pedido. Un símbolo ya pedido sin error no se vuelve a pedir.
+Guarda en `data/quotes_raw/<provider>/<símbolo>.json` y lleva `manifest_<provider>.csv`, una fila por pedido. Un símbolo ya pedido sin error no se vuelve a pedir.
 
 Uso:
     python -m tools.quotes_fetcher.fetch --provider byma_open_data --symbols-file <csv> --from 2025-12-15 --to 2026-03-13
@@ -22,10 +22,6 @@ DEFAULT_ROOT = Path("data/quotes_raw")
 MANIFEST_COLUMNS = ["provider", "provider_symbol", "date_from", "date_to", "http_status", "attempts", "rows_returned", "error", "requested_at"]
 
 
-def provider_symbol(provider: str, symbol: str) -> str:
-    return symbol + {"byma_open_data": config.BYMA_SYMBOL_SUFFIX, "yahoo": config.YAHOO_SYMBOL_SUFFIX}.get(provider, "")
-
-
 def read_symbols(path: str) -> list[dict]:
     with open(path, newline="", encoding="utf-8-sig") as fh:  # PowerShell escribe BOM
         return list(csv.DictReader(fh))
@@ -37,12 +33,6 @@ def already_fetched(manifest: Path, provider: str, date_from: date, date_to: dat
     with manifest.open(newline="", encoding="utf-8") as fh:
         return {r["provider_symbol"] for r in csv.DictReader(fh) if r["provider"] == provider and r["date_from"] == date_from.isoformat()
                 and r["date_to"] == date_to.isoformat() and not r["error"]}
-
-
-def build_provider(name: str, symbols: list[dict], get) -> quotes.QuoteProvider:
-    if name == "data912":
-        return quotes.Data912Provider(get, {s["symbol"]: config.DATA912_KIND_BY_TYPE[s["asset_type"]] for s in symbols if s["asset_type"] in config.DATA912_KIND_BY_TYPE})
-    return {"byma_open_data": quotes.BymaProvider, "yahoo": quotes.YahooProvider}[name](get)
 
 
 def run(provider: quotes.QuoteProvider, symbols: list[str], date_from: date, date_to: date, root: Path, pause_s: float = config.QUOTE_PAUSE_S) -> dict:
@@ -82,9 +72,9 @@ def main() -> None:
     args = parser.parse_args()
 
     rows = read_symbols(args.symbols_file)
-    provider = build_provider(args.provider, rows, requests.get)
+    provider = quotes.build_provider(args.provider, rows, requests.get)
     wanted = [s["symbol"] for s in rows if args.provider != "data912" or s["asset_type"] in config.DATA912_KIND_BY_TYPE]
-    print(run(provider, [provider_symbol(args.provider, s) for s in wanted], args.date_from, args.date_to, args.root))
+    print(run(provider, [quotes.provider_symbol(args.provider, s) for s in wanted], args.date_from, args.date_to, args.root))
 
 
 if __name__ == "__main__":

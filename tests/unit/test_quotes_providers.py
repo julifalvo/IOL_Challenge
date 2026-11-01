@@ -122,9 +122,9 @@ def test_file_names_are_valid_on_windows_and_volumes(tmp_path):
 
 
 def test_provider_symbol_follows_the_mapping_format():
-    assert fetch.provider_symbol("byma_open_data", "AL30") == f"AL30{config.BYMA_SYMBOL_SUFFIX}"
-    assert fetch.provider_symbol("yahoo", "AAPL") == f"AAPL{config.YAHOO_SYMBOL_SUFFIX}"
-    assert fetch.provider_symbol("data912", "AL30") == "AL30"
+    assert quotes.provider_symbol("byma_open_data", "AL30") == f"AL30{config.BYMA_SYMBOL_SUFFIX}"
+    assert quotes.provider_symbol("yahoo", "AAPL") == f"AAPL{config.YAHOO_SYMBOL_SUFFIX}"
+    assert quotes.provider_symbol("data912", "AL30") == "AL30"
 
 
 def test_fetcher_keeps_going_after_an_error_and_only_asks_for_what_is_missing(tmp_path):
@@ -150,3 +150,20 @@ def test_fetcher_keeps_going_after_an_error_and_only_asks_for_what_is_missing(tm
     assert provider.asked == ["A", "MALO", "B", "MALO"]
     with (tmp_path / "manifest_prov.csv").open(newline="", encoding="utf-8") as fh:
         assert len(list(csv.DictReader(fh))) == 4
+
+
+def test_an_unexpected_response_is_recorded_and_does_not_raise():
+    """Un payload con otra forma no puede detener el lote, y reintentar no lo cambia."""
+
+    class Broken:
+        name = "x"
+        calls = 0
+
+        def fetch_daily(self, provider_symbol, date_from, date_to):
+            Broken.calls += 1
+            raise KeyError("close")
+
+    rows, record = quotes.fetch_with_retries(Broken(), "AAA", date(2026, 1, 1), date(2026, 1, 2), sleep=lambda _: None)
+    assert rows == []
+    assert (record["attempts"], record["http_status"], Broken.calls) == (1, None, 1)
+    assert record["error"].startswith("KeyError")
