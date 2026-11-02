@@ -9,11 +9,11 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 | 02 Bronze | hecho (local + Databricks) | 132/132 passed en la última suite completa; 33/33 de Bronze después de las últimas correcciones (2026-11-01) | `02_ingest_bronze` OK (2026-11-01) | Review hecho. Outputs en `notebooks_executed/02_ingest_bronze.ipynb` |
 | 03 Silver + calidad | hecho (local + Databricks) | 285/285 passed (2026-11-01) | `03_quality_silver` OK con la clasificación de la etapa 04 (2026-11-01) | Review hecho. **Falta exportar con outputs:** el `.ipynb` del repo tiene los números anteriores (DQ020 437, DQ022 105) |
 | 04 Instrumentos | hecho (local + Databricks) | 333/333 passed (2026-11-01) | `04_instruments` OK (2026-11-01) | Review hecho. **Falta exportar con outputs.** 0 símbolos en `NEEDS_REVIEW` después de la etapa 09 |
-| 05 Cotizaciones | pendiente | — | — | |
+| 05 Cotizaciones | hecho (local + Databricks) | 62/62 de la etapa (2026-11-01); suite completa de 395 no terminada | `05_market_quotes` OK (2026-11-01) | **Falta `/review-stage 05` y exportar con outputs.** |
 | 06 Gold + SCD2 | pendiente | — | — | |
 | 07 Monitoreo + performance | pendiente | — | — | |
 | 08 EDA + SQL | pendiente | — | — | |
-| 09 IA | componente A hecho (local + Databricks); componente B pendiente de la etapa 08 | 333/333 passed (2026-11-01) | `09_ai_enrichment` OK (2026-11-01) | **Falta `/review-stage 09` y exportar con outputs.** Etapa 05 en curso |
+| 09 IA | componente A hecho (local + Databricks); componente B pendiente de la etapa 08 | 333/333 passed (2026-11-01) | `09_ai_enrichment` OK (2026-11-01) | **Falta `/review-stage 09` y exportar con outputs.** |
 | 10 Orquestación + tests | pendiente | — | — | |
 | 11 Entrega | pendiente | — | — | |
 
@@ -262,3 +262,10 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - **Límites:** las etiquetas no tienen revisión humana independiente; emisor y sector no están evaluados; 0 `CONFLICT` no prueba acuerdo. Detalle en ADR-011.
   - **Componente B no ejecutado:** el resumen de EDA necesita `iol_ops.eda_metrics`, de la etapa 08.
   - Tests locales: 333 passed, en 29 min 45 s.
+- 2026-11-01 — **Etapa 05: hecha. Cierre como entrega parcial.** Requisitos R-16 a R-21.
+  - Código: `src/iol_pipeline/quotes.py`, `notebooks/05_market_quotes.py`, `scripts/export_quote_coverage.py`, y la capa de validación en `instruments.py`.
+  - Corrida: 93,8% de cobertura (93.761 de 99.992 elegibles), 100% en el top 20, `fact_trade_market` con 100.000 filas, 0 cotizaciones posteriores a la operación, segunda corrida con 0 cambios [MEDIDO].
+  - Criterios: ✅ ADR-008 con resultados reales; ✅ `fact_trade_market` con 100.000 filas; ✅ cobertura publicada y consistente con `quote_requests`; ✅ proveedor caído probado con `FileReplayProvider` sin archivo (test de integración y los 5 símbolos sin archivo de la corrida).
+  - **Límites:** por API solo se hicieron 600 pedidos, con 3 errores; el resto salió del Volume. ONs 4,1% y opciones 0%. Entre 15% y 38% de las operaciones de los tipos más operados cae fuera del rango diario del proveedor, sin explicación confirmada.
+  - **Tests:** 62 de la etapa en verde. La suite completa de 395 con el código final **no terminó**; la última completa dio 333 passed, antes de esta etapa.
+  - **No ejecutado:** 06, 07, 08, 09b, 10, 11 y el benchmark de la 01.
