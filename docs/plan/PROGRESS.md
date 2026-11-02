@@ -7,13 +7,13 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 | 00 Entorno | hecho (local + Databricks) | 99/99 passed (2026-11-01) | `00_setup` OK; `00_smoke_test` 10/11 OK, 1 inconcluso (2026-11-01) | Review hecho. Outputs en `notebooks_executed/`. 2 bajas abiertas: fixture (etapa 03) y triple evaluación del MERGE (benchmark) |
 | 01 Profiling + arquitectura | parcial | 99/99 passed (2026-11-01) | `01_data_profiling` y `00_quotes_spike` OK (2026-11-01) | Review hecho. **Pendiente, por dependencia:** benchmark, §6 de `ARCHITECTURE.md` y ADR-010 necesitan Silver y Gold (día 5 de `PLAN.md`). 8 bajas abiertas (ver log) |
 | 02 Bronze | hecho (local + Databricks) | 132/132 passed en la última suite completa; 33/33 de Bronze después de las últimas correcciones (2026-11-01) | `02_ingest_bronze` OK (2026-11-01) | Review hecho. Outputs en `notebooks_executed/02_ingest_bronze.ipynb` |
-| 03 Silver + calidad | hecho (local + Databricks) | 285/285 passed (2026-11-01) | `03_quality_silver` OK con la clasificación de la etapa 04 (2026-11-01) | Review hecho. **Falta exportar con outputs:** el `.ipynb` del repo tiene los números anteriores (DQ020 437, DQ022 105) |
-| 04 Instrumentos | hecho (local + Databricks) | 333/333 passed (2026-11-01) | `04_instruments` OK (2026-11-01) | Review hecho. **Falta exportar con outputs.** 0 símbolos en `NEEDS_REVIEW` después de la etapa 09 |
-| 05 Cotizaciones | hecho (local + Databricks) | 62/62 de la etapa (2026-11-01); suite completa de 395 no terminada | `05_market_quotes` OK (2026-11-01) | **Falta la revisión de la etapa 05 y exportar con outputs.** |
+| 03 Silver + calidad | hecho (local + Databricks) | 285/285 passed (2026-11-01) | `03_quality_silver` OK con la clasificación de la etapa 04 (2026-11-01) | Review hecho. Outputs en `notebooks_executed/03_quality_silver.ipynb` |
+| 04 Instrumentos | hecho (local + Databricks) | 333/333 passed (2026-11-01) | `04_instruments` OK (2026-11-01) | Review hecho. Outputs en `notebooks_executed/04_instruments.ipynb`. 0 símbolos en `NEEDS_REVIEW` después de la etapa 09 |
+| 05 Cotizaciones | hecho (local + Databricks) | 62/62 de la etapa (2026-11-01); suite completa de 395 no terminada | `05_market_quotes` OK (2026-11-01) | **Falta la revisión de la etapa 05.** Outputs en `notebooks_executed/05_market_quotes.ipynb` |
 | 06 Gold + SCD2 | pendiente | — | — | |
 | 07 Monitoreo + performance | pendiente | — | — | |
 | 08 EDA + SQL | pendiente | — | — | |
-| 09 IA | componente A hecho (local + Databricks); componente B pendiente de la etapa 08 | 333/333 passed (2026-11-01) | `09_ai_enrichment` OK (2026-11-01) | **Falta la revisión de la etapa 09 y exportar con outputs.** |
+| 09 IA | componente A hecho (local + Databricks); componente B pendiente de la etapa 08 | 333/333 passed (2026-11-01) | `09_ai_enrichment` OK (2026-11-01) | **Falta la revisión de la etapa 09.** Outputs en `notebooks_executed/09_ai_enrichment.ipynb` |
 | 10 Orquestación + tests | pendiente | — | — | |
 | 11 Entrega | pendiente | — | — | |
 
@@ -269,3 +269,5 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - **Límites:** por API solo se hicieron 600 pedidos, con 3 errores; el resto salió del Volume. ONs 4,1% y opciones 0%. Entre 15% y 38% de las operaciones de los tipos más operados cae fuera del rango diario del proveedor, sin explicación confirmada.
   - **Tests:** 62 de la etapa en verde. La suite completa de 395 con el código final **no terminó**; la última completa dio 333 passed, antes de esta etapa.
   - **No ejecutado:** 06, 07, 08, 09b, 10, 11 y el benchmark de la 01.
+- 2026-11-01 — **Notebooks 03, 04, 09 y 05 corridos con Run all y exportados.** Sin errores ni identificadores de clientes u operaciones en los outputs. Cada notebook tiene su propio `pipeline_run_id`, porque el orquestador no existe todavía.
+  - La corrida del 05 volvió a pedir por API los 5 símbolos con error: siguen con error, y la cobertura no cambió (93,8%).
