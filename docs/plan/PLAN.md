@@ -52,7 +52,7 @@
 - [x] `ALTER TABLE ... CLUSTER BY` sobre una tabla de prueba.
 - [x] Export de un notebook a `.ipynb` con outputs y verificación del archivo.
 
-## Arranque con Claude Code (VS Code)
+## Arranque
 
 1. Copiar este kit a la raíz del repo, el CSV a `data/raw/` y el PDF a `docs/plan/` (ambos gitignored).
 2. Entorno local **Windows nativo (PowerShell)**, verificado el 2026-10-31:
@@ -60,7 +60,7 @@
    - pyspark 4.0.5 / delta-spark 4.0.1, que traen Hadoop 3.4.1.
    - winutils `hadoop-3.4.0-win10-x64` en `C:\hadoop\bin`.
 
-   Detalle y procedencia en CLAUDE.md §Entorno.
+   Detalle y procedencia en `docs/entorno_local.md`.
    ```powershell
    # por sesión de terminal, sin variables globales
    $env:JAVA_HOME      = "C:\Program Files\Eclipse Adoptium\jdk-17.0.20.101-hotspot"
@@ -72,10 +72,9 @@
    ```
    - Todos los tests deben dar `PASSED`. Si Spark no arranca, `test_delta_merge_is_idempotent` da `ERROR at setup` con la lista de qué revisar. Solo se saltea con `IOL_SKIP_SPARK_TESTS=1`.
    - La primera corrida descarga los jars de Delta desde Maven Central.
-3. En Claude Code:
-   - "Leé CLAUDE.md, docs/plan/PLAN.md y docs/plan/requisitos_pdf.md. Resumime en 10 líneas qué vamos a construir y qué riesgos ves. No escribas código."
-   - `/implement-stage 00`
-   - Correr el smoke test en Free Edition y pegarle los resultados: "Actualizá ADR-001, ADR-008 y ADR-011 con estos resultados: …"
-   - `/implement-stage 01` … y así por etapa. Después de cada una: `/review-stage NN`.
-   - Al final: `/audit-delivery`.
-4. Cada vez que corras algo en Databricks, pegale a Claude Code los outputs relevantes para que complete PROGRESS.md y los ADR con `[MEDIDO]`.
+3. Por etapa, en orden:
+   - Leer el spec y sus ADR, implementar y correr los tests.
+   - Correr el smoke test en Free Edition y actualizar ADR-001, ADR-008 y ADR-011 con los resultados.
+   - Revisar la etapa antes de cerrarla.
+   - Al final: auditar la entrega contra `requisitos_pdf.md`.
+4. Cada vez que se corre algo en Databricks, los outputs relevantes completan PROGRESS.md y los ADR con `[MEDIDO]`.

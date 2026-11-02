@@ -2,7 +2,7 @@
 
 Reproduce los hallazgos que motivan los ADR. No reemplaza al notebook 01 (que
 recalcula en Spark y deja outputs en Databricks); sirve para iterar rápido en
-local y para que Claude Code tenga los números a mano.
+local y tener los números a mano.
 
 Uso:
     python scripts/profile_local.py data/raw/data-set-challenge-5-.csv

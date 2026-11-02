@@ -18,7 +18,7 @@ Las reglas y la lista de acciones de ADR-004 dejan solo 10 símbolos y 371 opera
 ## Evaluación
 - A ciegas: el modelo no recibe `rule_asset_type` ni los hermanos. Si los viera, los copiaría y la accuracy saldría inflada.
 - La muestra de 60 símbolos cubre todos los tipos salvo opciones, que no se consultan, e incluye símbolos en `NEEDS_REVIEW`.
-- **Límite de la muestra:** las etiquetas las escribió Claude Code, sin revisión humana independiente. Mide la coincidencia con esas etiquetas. Parte de la muestra también tiene el contraste de las listas de data912, y lo demás se apoya en la descripción del dataset. Las etiquetas no se tocaron después de ver los resultados.
+- **Límite de la muestra:** las etiquetas se escribieron con asistencia de IA, sin revisión humana independiente. Mide la coincidencia con esas etiquetas. Parte de la muestra también tiene el contraste de las listas de data912, y lo demás se apoya en la descripción del dataset. Las etiquetas no se tocaron después de ver los resultados.
 
 ### Elección del modelo [MEDIDO, Free Edition, 2026-11-01]
 | Modelo | `asset_type` (60) | Ticker (22 CEDEARs) | Error principal |
@@ -59,7 +59,7 @@ Está **dentro** del pipeline: mejora `dim_instrument`, el mapeo a la fuente de 
 |---|---|---|
 | `ai_query` en Databricks | sí [MEDIDO] 2026-11-01 | modelo: `databricks-meta-llama-3-3-70b-instruct`; `ai_query` con el prompt `Respond with the single word: pong` respondió `pong`: prueba conectividad, no calidad |
 | API externa (offline batch → Volume) | no evaluado | innecesario mientras `ai_query` funcione |
-| Manual en claude.ai con prompt versionado | sí | válido según PDF |
+| Manual en un chat con prompt versionado | sí | válido según PDF |
 
 ### Endpoints de serving disponibles en Free Edition [MEDIDO, 2026-11-01]
 `databricks-bge-large-en`, `databricks-deepseek-v4-flash-0731`, `databricks-gemma-3-12b`, `databricks-gpt-oss-120b`, `databricks-gpt-oss-20b`, `databricks-gte-large-en`, `databricks-llama-4-maverick`, `databricks-meta-llama-3-1-8b-instruct`, `databricks-meta-llama-3-3-70b-instruct`, `databricks-qwen3-embedding-0-6b`, `databricks-qwen3-next-80b-a3b-instruct`, `databricks-qwen35-122b-a10b`.

@@ -6,7 +6,7 @@
 Dejar el repo y el workspace listos para que cualquier etapa se pueda desarrollar localmente y correr en Databricks Free Edition sin fricción.
 
 ## Tareas
-1. Repo: estructura de `CLAUDE.md`, `.gitignore`, `requirements*.txt`, `pyproject.toml`.
+1. Repo: estructura de carpetas, `.gitignore`, `requirements*.txt`, `pyproject.toml`.
 2. `src/iol_pipeline/config.py`:
    - `CATALOG`, nombres de schemas, rutas de Volume.
    - `QUALITY_PARAMS` (umbrales de `docs/quality_rules.md`), `GATE_PARAMS` (de `docs/quality_gates.md`).

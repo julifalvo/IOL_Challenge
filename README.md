@@ -226,7 +226,7 @@ Benchmark de **cierre diario**, no precio al instante: la hora del dataset no es
 
 - **Resultado [MEDIDO]:** 1.136 de 1.150 símbolos sin opciones enriquecidos; 587 de 599 CEDEARs con ticker. Tipo: 1.435 por reglas, 3 por IA, 7 por override, 0 en `NEEDS_REVIEW`. Un rerun no consulta el modelo ni cambia filas.
 - **Limitaciones:**
-  - Las etiquetas las escribió Claude Code, sin revisión humana independiente; se fijaron antes de ver los resultados y con 60 símbolos la diferencia es orientativa.
+  - Las etiquetas se escribieron con asistencia de IA, sin revisión humana independiente; se fijaron antes de ver los resultados y con 60 símbolos la diferencia es orientativa.
   - Copiar el símbolo ya acierta 90,9% del ticker, así que esa cifra dice poco. Emisor y sector no están evaluados.
   - La confianza del modelo no discrimina: un pagaré salió como letra soberana con 0,9. Por eso 7 de los 10 tipos ambiguos llevan override.
   - Con el tipo de la regla en el input, el modelo tiende a repetirlo: 0 `CONFLICT` no prueba acuerdo.

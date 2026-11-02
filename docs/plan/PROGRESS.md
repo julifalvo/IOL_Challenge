@@ -9,17 +9,17 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 | 02 Bronze | hecho (local + Databricks) | 132/132 passed en la última suite completa; 33/33 de Bronze después de las últimas correcciones (2026-11-01) | `02_ingest_bronze` OK (2026-11-01) | Review hecho. Outputs en `notebooks_executed/02_ingest_bronze.ipynb` |
 | 03 Silver + calidad | hecho (local + Databricks) | 285/285 passed (2026-11-01) | `03_quality_silver` OK con la clasificación de la etapa 04 (2026-11-01) | Review hecho. **Falta exportar con outputs:** el `.ipynb` del repo tiene los números anteriores (DQ020 437, DQ022 105) |
 | 04 Instrumentos | hecho (local + Databricks) | 333/333 passed (2026-11-01) | `04_instruments` OK (2026-11-01) | Review hecho. **Falta exportar con outputs.** 0 símbolos en `NEEDS_REVIEW` después de la etapa 09 |
-| 05 Cotizaciones | hecho (local + Databricks) | 62/62 de la etapa (2026-11-01); suite completa de 395 no terminada | `05_market_quotes` OK (2026-11-01) | **Falta `/review-stage 05` y exportar con outputs.** |
+| 05 Cotizaciones | hecho (local + Databricks) | 62/62 de la etapa (2026-11-01); suite completa de 395 no terminada | `05_market_quotes` OK (2026-11-01) | **Falta la revisión de la etapa 05 y exportar con outputs.** |
 | 06 Gold + SCD2 | pendiente | — | — | |
 | 07 Monitoreo + performance | pendiente | — | — | |
 | 08 EDA + SQL | pendiente | — | — | |
-| 09 IA | componente A hecho (local + Databricks); componente B pendiente de la etapa 08 | 333/333 passed (2026-11-01) | `09_ai_enrichment` OK (2026-11-01) | **Falta `/review-stage 09` y exportar con outputs.** |
+| 09 IA | componente A hecho (local + Databricks); componente B pendiente de la etapa 08 | 333/333 passed (2026-11-01) | `09_ai_enrichment` OK (2026-11-01) | **Falta la revisión de la etapa 09 y exportar con outputs.** |
 | 10 Orquestación + tests | pendiente | — | — | |
 | 11 Entrega | pendiente | — | — | |
 
 ## Log de decisiones tomadas en la marcha
 
-- 2026-10-31 — Entorno local Windows nativo (PowerShell), Python 3.11 + JDK 17. ~~**Pendiente:** instalar Python 3.11 (el `py -3.11` registrado apunta a un ejecutable inexistente), JDK 17 (hoy solo JDK 22) y winutils/hadoop.dll; definir `JAVA_HOME`, `HADOOP_HOME` y `PYSPARK_PYTHON`.~~ Resuelto, ver "Entorno local verificado". — CLAUDE.md, PLAN.md
+- 2026-10-31 — Entorno local Windows nativo (PowerShell), Python 3.11 + JDK 17. ~~**Pendiente:** instalar Python 3.11 (el `py -3.11` registrado apunta a un ejecutable inexistente), JDK 17 (hoy solo JDK 22) y winutils/hadoop.dll; definir `JAVA_HOME`, `HADOOP_HOME` y `PYSPARK_PYTHON`.~~ Resuelto, ver "Entorno local verificado". — `docs/entorno_local.md`, PLAN.md
 - 2026-10-31 — `requisitos_pdf.md`: R-09, R-15, R-17, R-35 y R-37 corregidos con cita literal; se agrega R-40 (4 situaciones del Contexto). — ADR-001
 - 2026-10-31 — Filas IOLnet con escala anómala: 8 de 13 [MEDIDO]; "valor por defecto" pasa a [HIPÓTESIS]. — ADR-005
 - 2026-10-31 — **Descartados** los valores esperados de SCD2 (~8.000 clientes con ≥2 versiones; 255/181 cambios de canal) y las mediciones pandas que se hicieron para contrastarlos (8.040 / 16.814 y las 5 reglas de desempate).
@@ -27,7 +27,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - No se usan como referencia. La celda 10 del notebook 01 calcula (a) y (b) bajo la definición vigente, sin valores esperados.
   - — ADR-007, spec 01
 - 2026-10-31 — Fijado `preferred_channel` = canal con más operaciones acumuladas hasta el corte. Desempate determinista: 1) operación más reciente entre los empatados, 2) alfabético de `channel_code`. — ADR-007, spec 06, `data_model.md`
-- 2026-10-31 — ~~**Bloqueo:** no se arranca `/implement-stage 00` hasta que Julián instale el entorno local (Python 3.11, JDK 17, winutils).~~ Resuelto, ver entrada siguiente.
+- 2026-10-31 — ~~**Bloqueo:** no se arranca la etapa 00 hasta que Julián instale el entorno local (Python 3.11, JDK 17, winutils).~~ Resuelto, ver entrada siguiente.
 - 2026-10-31 — **Entorno local verificado (Windows nativo).**
   - Versiones:
     - `.venv` con Python 3.11.9 y `requirements-dev.txt` instalado: pyspark 4.0.5, delta-spark 4.0.1, pandas 3.1.0, pyarrow 26.0.0, scipy 1.17.1, pytest 9.2.0.
@@ -41,7 +41,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - Resultado de `pytest -q -rA`: **4 passed, 0 skipped** (31 s), incluido `test_delta_merge_is_idempotent` (Delta MERGE real en disco local).
   - Variables (`JAVA_HOME`, `HADOOP_HOME`, `PATH`, `PYSPARK_PYTHON`): por sesión de terminal, sin cambios globales en Windows.
   - Todavía no se probó nada en Databricks Free Edition. El smoke test es la etapa 00.
-  - — CLAUDE.md, PLAN.md
+  - — `docs/entorno_local.md`, PLAN.md
 - 2026-10-31 — La fixture `spark` ahora **falla** (`pytest.fail` con checklist del entorno) si Spark+Delta no arranca, en lugar de saltear.
   - Skip solo deliberado, con `IOL_SKIP_SPARK_TESTS=1`.
   - Test nuevo: `tests/unit/test_spark_fixture.py`.
@@ -80,13 +80,13 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - Criterios de aceptación de la etapa 00: los 4 ✅. ~~Falta exportar los notebooks con outputs a `notebooks_executed/`.~~ Exportados en `8aaba06`.
   - — ADR-001, ADR-008, ADR-011
 - 2026-11-01 — **Decisión: Free Edition sin consultar a IOL.** No se envió el mail y se eliminó `docs/plan/consulta_iol.md`. ADR-001 pasa a aceptado; el desvío de R-37 se declara en el README. — ADR-001
-- 2026-11-01 — **`/review-stage 00`:** listo con cambios menores, sin severidad alta. Corregidos los de severidad media:
+- 2026-11-01 — **Revisión de la etapa 00:** listo con cambios menores, sin severidad alta. Corregidos los de severidad media:
   - Fórmula de ingesta: `read = inserted + already_present + duplicate_in_file`; `conflict` es subconjunto de `inserted`. — ADR-002, `quality_rules.md`, `data_model.md`, spec 02
   - `config.CHANNELS` ahora da 5 `channel_code`; las familias van en `CHANNEL_FAMILIES`. — `data_model.md`
   - `write_delta_merge` falla si el origen trae columnas que el destino no tiene. Antes `INSERT *` las ignoraba sin error [MEDIDO, Spark 4.0.5 local].
   - La clave del MERGE debe determinar el contenido: queda en el docstring y fijado con test. No hay detección de conflictos en el helper.
   - Egress: HTTP 403, 407 y 429 pasan a `INCONCLUSO` y se guarda el header `Server`. — ADR-008
-  - Runtime real documentado (Spark 4.2.0, Python 3.12.3) y su diferencia con local. — ADR-001, CLAUDE.md
+  - Runtime real documentado (Spark 4.2.0, Python 3.12.3) y su diferencia con local. — ADR-001, `docs/entorno_local.md`
   - Tests locales: 39 passed.
 - 2026-11-01 — **Pendientes abiertos de la etapa 00:**
   - Volver a correr `00_setup` y `00_smoke_test` en Free Edition y exportarlos. Los `.ipynb` actuales son de la versión anterior de los notebooks: **no ejecutado** con el código corregido. El de `00_setup` todavía muestra el email del usuario en un output, y va a seguir en el historial de git aunque se reemplace.
@@ -105,7 +105,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - `profile_local.py` toma los feriados de `config`; `pyproject.toml` pide Python 3.11 o superior.
   - Limpiadas las entradas viejas de este log.
   - Tests locales: 46 passed. `profile_local.py` da la misma salida que antes del cambio.
-- 2026-11-01 — **Sin acceso de Claude Code a Databricks.** No hay CLI, configuración ni credenciales en la máquina, y no se generó ningún token. Las corridas en Free Edition las hace el usuario.
+- 2026-11-01 — **Sin acceso por CLI a Databricks.** No hay CLI, configuración ni credenciales en la máquina, y no se generó ningún token. Las corridas en Free Edition se hacen desde la interfaz.
 - 2026-11-01 — **Etapa 01, parcial.**
   - Código: `calendar.py`, `segmentation.py`, `profiling.py`, `notebooks/01_data_profiling.py`, y 44 tests. `calendar.py` y `segmentation.py` se reusan en las etapas 03 y 06.
   - Corrida con Spark 4.0.5 local sobre el CSV completo: coincide con `profile_local.py` en lo comparable (conteos, sábados, canales, percentiles, 279 símbolos, 13 anomalías, 21/18/10 días hábiles). Las fechas no dependen de la zona horaria de la sesión.
@@ -119,9 +119,9 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
 - 2026-11-01 — **Spike de cotizaciones desde local.** `tools/quotes_fetcher/spike.py`.
   - BYMA cubre 8/8, data912 5/8, Yahoo 3/8. IOL da HTTP 401 sin credenciales.
   - BYMA da los bonos soberanos ajustados, y el sanity check de ADR-005 no lo detecta. BYMA y Yahoo dan `YPFD` a ×0,1.
-  - Primera decisión aceptada por el usuario: data912 para bonos soberanos y acciones; ~~BYMA para CEDEARs~~, letras y ONs. Corregida, ver `/review-stage 01`. data912 es un proyecto personal sin garantías: es el principal riesgo.
+  - Primera decisión aceptada por el usuario: data912 para bonos soberanos y acciones; ~~BYMA para CEDEARs~~, letras y ONs. Corregida, ver la revisión de la etapa 01. data912 es un proyecto personal sin garantías: es el principal riesgo.
   - Pendientes para la etapa 04 y 05: factor de escala por símbolo y no solo por (proveedor, `asset_type`), revisar el rango del sanity check, y tratar días como el 08/01. — ADR-005, ADR-008
-- 2026-11-01 — **`/review-stage 01`:** no listo hasta corregir, con 1 hallazgo de severidad alta. Corregidos el de severidad alta y los 8 de severidad media:
+- 2026-11-01 — **Revisión de la etapa 01:** no listo hasta corregir, con 1 hallazgo de severidad alta. Corregidos el de severidad alta y los 8 de severidad media:
   - **Alta:** BYMA también ajusta CEDEARs; MSFT da +0,86% contra un umbral de 0,5%. Los CEDEARs en ARS pasan a data912 (aceptado por el usuario). Las variantes en USD se deciden en la etapa 05. — ADR-008
   - El spike comparaba medianas de ventanas distintas (MSFT daba 0,926 en lugar de 1,0001). Ahora mide contra el cierre del mismo día, y suma 8 CEDEARs. — ADR-008
   - YM34D da 4% de sesgo con BYMA, su única fuente; queda como pendiente de la etapa 05. — ADR-008
@@ -163,7 +163,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
     - ⏳ `DESCRIBE DETAIL` muestra formato delta: medido en local, **no ejecutado** en Free Edition.
     - ✅ Tests verdes: 124 passed.
   - Sin probar en serverless: `spark.createDataFrame` con 100.000 tuplas por Spark Connect, y la lectura directa del Volume con `open()`.
-- 2026-11-01 — **`/review-stage 02`:** listo con cambios menores, sin severidad alta. Corregidos los 5 de severidad media:
+- 2026-11-01 — **Revisión de la etapa 02:** listo con cambios menores, sin severidad alta. Corregidos los 5 de severidad media:
   - Una línea con campos de más ya no frena el archivo: entra con `extra_fields` y Silver la marca con la regla nueva `DQ008`. Esto cambia la decisión inicial de la etapa. El fixture no tiene ese caso: se suma en la etapa 03. — ADR-002, `quality_rules.md`
   - Los duplicados exactos dejan sus números de fila en `duplicate_row_numbers`.
   - Un archivo sin filas da `FAILED_EMPTY` y no escribe.
@@ -197,7 +197,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
     - ✅ Cada regla del catálogo implementada con test, salvo `DQ030` y `DQ033` (etapa 04).
     - ✅ Columna "Observado" de `quality_rules.md` completada, con números de la corrida local. Falta confirmarlos en Free Edition.
     - ⏳ Reejecución sin cambios en conteos ni hashes: medido en local, **no ejecutado** en Free Edition.
-- 2026-11-01 — **`/review-stage 03`:** listo con cambios menores, sin severidad alta. Corregidos los 5 de severidad media y las 7 bajas:
+- 2026-11-01 — **Revisión de la etapa 03:** listo con cambios menores, sin severidad alta. Corregidos los 5 de severidad media y las 7 bajas:
   - El MERGE compara todas las columnas derivadas: un cambio de calendario no llegaba a las filas existentes [MEDIDO].
   - `quality_events` tiene `is_active`: un evento cuya marca desaparece queda inactivo, no se borra. La reconciliación controla las dos direcciones.
   - La versión de reglas se lee al correr, y `run_silver` falla si no hay estadísticas: antes `DQ021` pasaba de 4 a 0 sin aviso, con un test en verde [MEDIDO].
@@ -232,7 +232,7 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
     - ✅ ADR-004 documenta reglas, casos borde y cómo agregar un símbolo.
     - ✅ Tests verdes: 268 passed, en 22 min 19 s.
   - El notebook 01 también cambiará en la corrida final: su celda 6 usa estas reglas.
-- 2026-11-01 — **`/review-stage 04`:** listo con cambios menores, sin severidad alta. Corregidos los 4 de severidad media y las 6 bajas:
+- 2026-11-01 — **Revisión de la etapa 04:** listo con cambios menores, sin severidad alta. Corregidos los 4 de severidad media y las 6 bajas:
   - Un override o la IA que cambia el tipo ahora llega al proveedor: `D30A6` pasado a letra quedaba `UNMAPPED`, sin cotizaciones [MEDIDO]. Orden: reglas, IA, override de tipo, proveedor, demás overrides.
   - Los overrides mal escritos fallan: valor inválido, valor vacío o símbolo inexistente.
   - `build_mapping` acepta el enriquecimiento de la IA: reejecutar borraba `issuer` [MEDIDO]. **Para la etapa 09:** escribir `iol_ops.instrument_enrichment` (symbol, asset_type, issuer, sector, underlying_ticker_foreign) y reejecutar el mapeo.
@@ -241,10 +241,10 @@ Actualizar al cerrar cada etapa. Columna "Databricks" = corrido en Free Edition 
   - Validación contra data912: de 930 símbolos en las listas independientes, 923 coinciden, 7 quedan en `NEEDS_REVIEW` y 0 están mal clasificados [MEDIDO].
   - Tests locales: 285 passed, en 26 min 13 s. Silver da los mismos números.
   - Sin probar en serverless: leer `local_stocks.csv`, y bajar las listas de data912.
-- 2026-11-01 — **CLI de Databricks disponible.** Actualiza la entrada "Sin acceso de Claude Code a Databricks".
-  - Claude Code puede hacer el Pull del Git folder y leer el workspace.
-  - No puede ejecutar notebooks sin Databricks Jobs, que el challenge prohíbe (R-37): en serverless, el CLI solo ejecuta con `jobs submit`.
-  - No puede exportar outputs: `workspace export --format JUPYTER` devuelve 0 outputs [MEDIDO]. Correr y exportar se hace desde la interfaz.
+- 2026-11-01 — **CLI de Databricks disponible.** Actualiza la entrada "Sin acceso por CLI a Databricks".
+  - Permite hacer el Pull del Git folder y leer el workspace.
+  - No permite ejecutar notebooks sin Databricks Jobs, que el challenge prohíbe (R-37): en serverless, el CLI solo ejecuta con `jobs submit`.
+  - No permite exportar outputs: `workspace export --format JUPYTER` devuelve 0 outputs [MEDIDO]. Correr y exportar se hace desde la interfaz.
   - Al correr un notebook, Databricks le agrega un encabezado con `environment_version`. Si ese notebook cambió en el repo, el Pull da conflicto, sin que haya un cambio real.
 - 2026-11-01 — **Etapas 03 y 04 corridas en Free Edition,** con el código de `main`. Los números coinciden con Spark local.
   - `03_quality_silver`: 100.000 filas, 0 CRITICAL; 89.312 OK, 10.680 WARNING, 8 ERROR. DQ020 415, DQ022 107, DQ030 y DQ033 en 0. La primera corrida actualizó 18.933 filas, porque cambió la clasificación; la segunda no toca nada. Reconciliación sin diferencias.

@@ -28,7 +28,7 @@ def _startup_help(exc: BaseException) -> str:
     winutils_state = "encontrado" if hadoop_home and winutils.is_file() else "NO encontrado"
     return (
         f"Spark+Delta local no arrancó: {type(exc).__name__}: {detail}\n"
-        "Revisar (ver CLAUDE.md §Entorno y §Comandos):\n"
+        "Revisar (ver docs/entorno_local.md):\n"
         f"  - JAVA_HOME={os.environ.get('JAVA_HOME', '<sin definir>')} -> debe apuntar a un JDK 17\n"
         f"  - HADOOP_HOME={hadoop_home or '<sin definir>'} -> (Windows) debe contener bin\\winutils.exe "
         f"y bin\\hadoop.dll; winutils.exe: {winutils_state}\n"

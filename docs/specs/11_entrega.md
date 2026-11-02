@@ -5,7 +5,7 @@
 ## Repo público
 - Estructura final (notebooks numerados = orden de ejecución evidente):
 ```
-README.md  ARCHITECTURE.md  CLAUDE.md
+README.md  ARCHITECTURE.md
 notebooks/                 # fuente .py (Databricks source)
 notebooks_executed/        # .ipynb exportados CON outputs (lo que mira el evaluador)
 src/iol_pipeline/  tools/  sql/  prompts/  tests/  scripts/
@@ -27,7 +27,7 @@ reports/pytest.xml
 ## README
 Usar `README.md` (esqueleto ya creado) y completar **solo con resultados del run final**.
 
-## Auditoría final (con `/audit-delivery`)
+## Auditoría final
 - Recorrer `docs/plan/requisitos_pdf.md`: cada R-xx con archivo + celda de evidencia.
 - Buscar en el repo: CSV original, tokens, emails, `.env` → 0.
 - Buscar `TODO`, `[HIPÓTESIS]` sin resolver → listados en "Limitaciones".

@@ -1,13 +1,13 @@
 symbol,field,value,reason,author,date
-#MAV150560106,asset_type,OTRO,"Pagaré negociado en MAV, no es deuda del Tesoro. La IA lo clasificó como letra soberana con confianza 0,9: se descarta",claude-code,2026-11-01
-BDC28,asset_type,BONO_SUBSOBERANO,Está en la lista arg_bonds de data912 [MEDIDO]. Que el emisor sea la Ciudad de Buenos Aires es [SUPUESTO]: la descripción no lo dice y la IA no lo clasificó,claude-code,2026-11-01
-SHELD,asset_type,CEDEAR,Está en la lista arg_cedears de data912 [MEDIDO]. La IA lo dejó en OTRO,claude-code,2026-11-01
-TVPA,asset_type,BONO_SOBERANO,"Cupón vinculado al PBI, emitido por la Nación. Está en la lista arg_bonds de data912 [MEDIDO]. La IA lo dejó en OTRO",claude-code,2026-11-01
-TVPE,asset_type,BONO_SOBERANO,"Cupón vinculado al PBI, emitido por la Nación. Está en la lista arg_bonds de data912 [MEDIDO]. La IA lo dejó en OTRO",claude-code,2026-11-01
-TVPP,asset_type,BONO_SOBERANO,"Cupón vinculado al PBI, emitido por la Nación. Está en la lista arg_bonds de data912 [MEDIDO]. La IA lo dejó en OTRO",claude-code,2026-11-01
-TVPY,asset_type,BONO_SOBERANO,"Cupón vinculado al PBI, emitido por la Nación. Está en la lista arg_bonds de data912 [MEDIDO]. La IA lo dejó en OTRO",claude-code,2026-11-01
-SHELD,issuer,Shell Plc,"Lo dice la descripción del dataset. La IA lo dejó vacío al reconsultar con el tipo corregido",claude-code,2026-11-01
-TVPA,issuer,República Argentina,"Cupón PBI de la Nación. La IA lo dejó vacío al reconsultar con el tipo corregido",claude-code,2026-11-01
-TVPE,issuer,República Argentina,"Cupón PBI de la Nación. La IA lo dejó vacío al reconsultar con el tipo corregido",claude-code,2026-11-01
-TVPP,issuer,República Argentina,"Cupón PBI de la Nación. La IA lo dejó vacío al reconsultar con el tipo corregido",claude-code,2026-11-01
-TVPY,issuer,República Argentina,"Cupón PBI de la Nación. La IA lo dejó vacío al reconsultar con el tipo corregido",claude-code,2026-11-01
+#MAV150560106,asset_type,OTRO,"Pagaré negociado en MAV, no es deuda del Tesoro. La IA lo clasificó como letra soberana con confianza 0,9: se descarta",asistido-por-ia,2026-11-01
+BDC28,asset_type,BONO_SUBSOBERANO,Está en la lista arg_bonds de data912 [MEDIDO]. Que el emisor sea la Ciudad de Buenos Aires es [SUPUESTO]: la descripción no lo dice y la IA no lo clasificó,asistido-por-ia,2026-11-01
+SHELD,asset_type,CEDEAR,Está en la lista arg_cedears de data912 [MEDIDO]. La IA lo dejó en OTRO,asistido-por-ia,2026-11-01
+TVPA,asset_type,BONO_SOBERANO,"Cupón vinculado al PBI, emitido por la Nación. Está en la lista arg_bonds de data912 [MEDIDO]. La IA lo dejó en OTRO",asistido-por-ia,2026-11-01
+TVPE,asset_type,BONO_SOBERANO,"Cupón vinculado al PBI, emitido por la Nación. Está en la lista arg_bonds de data912 [MEDIDO]. La IA lo dejó en OTRO",asistido-por-ia,2026-11-01
+TVPP,asset_type,BONO_SOBERANO,"Cupón vinculado al PBI, emitido por la Nación. Está en la lista arg_bonds de data912 [MEDIDO]. La IA lo dejó en OTRO",asistido-por-ia,2026-11-01
+TVPY,asset_type,BONO_SOBERANO,"Cupón vinculado al PBI, emitido por la Nación. Está en la lista arg_bonds de data912 [MEDIDO]. La IA lo dejó en OTRO",asistido-por-ia,2026-11-01
+SHELD,issuer,Shell Plc,"Lo dice la descripción del dataset. La IA lo dejó vacío al reconsultar con el tipo corregido",asistido-por-ia,2026-11-01
+TVPA,issuer,República Argentina,"Cupón PBI de la Nación. La IA lo dejó vacío al reconsultar con el tipo corregido",asistido-por-ia,2026-11-01
+TVPE,issuer,República Argentina,"Cupón PBI de la Nación. La IA lo dejó vacío al reconsultar con el tipo corregido",asistido-por-ia,2026-11-01
+TVPP,issuer,República Argentina,"Cupón PBI de la Nación. La IA lo dejó vacío al reconsultar con el tipo corregido",asistido-por-ia,2026-11-01
+TVPY,issuer,República Argentina,"Cupón PBI de la Nación. La IA lo dejó vacío al reconsultar con el tipo corregido",asistido-por-ia,2026-11-01

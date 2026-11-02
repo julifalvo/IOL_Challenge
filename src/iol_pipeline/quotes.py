@@ -486,7 +486,7 @@ def coverage(trades: DataFrame, matched: DataFrame, mapping: DataFrame, series: 
 
 
 def run_market(spark: SparkSession, trades_table: str, mapping_table: str, raw_table: str, requests_table: str, series_table: str, market_table: str, trade_market_table: str, coverage_table: str, gold_run_id: str = "") -> dict:
-    """Benchmark, matching y cobertura, en ese orden. Reejecutar con el mismo input no cambia ninguna fila (regla 2)."""
+    """Benchmark, matching y cobertura, en ese orden. Reejecutar con el mismo input no cambia ninguna fila."""
     trades, mapping, series = spark.table(trades_table), spark.table(mapping_table), spark.table(series_table)
     quote_result = io.write_delta_upsert(spark, market_quotes(spark.table(raw_table), series, mapping), market_table, FACT_QUOTES_KEYS, FACT_QUOTES_COMPARE, deactivate_column="is_active")
     quotes = spark.table(market_table).where("is_active")
