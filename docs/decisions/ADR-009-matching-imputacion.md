@@ -22,9 +22,23 @@
 | WARRANT | 7,6% | 3,8% |
 
 - **Por qué la mitad del rango:** el benchmark es el cierre, y la hora de la operación no es confiable. Una operación normal puede estar en cualquier punto del día, así que su distancia al cierre es del orden de medio rango sin que haya nada raro.
-- **Por qué no el 0,5% inicial:** en acciones daba 43% de las operaciones "por encima" y en CEDEARs 39%, casi todo ruido intradiario [MEDIDO en local; que sea ruido es HIPÓTESIS].
+- **Por qué no el 0,5% inicial:** en acciones daba 43% de las operaciones "por encima" y en CEDEARs 39% [MEDIDO]; que sea casi todo ruido intradiario es [HIPÓTESIS].
 - **τ no es un umbral de sobreprecio.** Sigue habiendo operaciones "por encima" por puro azar. Por eso la consulta por cliente de la etapa 08 compara contra la tasa base con un test binomial.
 - Tipos sin datos, como opciones: se deja el 0,5% de `config.ABOVE_MARKET_TOLERANCE`. No se usa mientras no tengan cotizaciones.
+
+**Resultado sobre las operaciones comparables** [MEDIDO en Free Edition, 2026-11-01]:
+
+| `asset_type` | Operaciones | Mediana de \|desvío\| | Por encima con 0,5% | Por encima con τ | Sobre el máximo del día | Bajo el mínimo del día |
+|---|---:|---:|---:|---:|---:|---:|
+| CEDEAR | 53.232 | 1,02% | 38,7% | 21,5% | 11,0% | 8,2% |
+| ACCION_LOCAL | 18.092 | 1,57% | 43,1% | 17,6% | 8,0% | 7,2% |
+| BONO_SOBERANO | 17.656 | 0,42% | 20,4% | 12,2% | 14,2% | 14,6% |
+| LETRA_LECAP_BONCAP | 4.367 | 0,28% | 14,7% | 11,4% | 18,0% | 19,8% |
+| BONO_SUBSOBERANO | 215 | 0,50% | 33,5% | 18,6% | 22,8% | 12,6% |
+| ON | 104 | 0,48% | 26,0% | 18,3% | 31,7% | 4,8% |
+| WARRANT | 95 | 4,96% | 60,0% | 38,9% | 11,6% | 5,3% |
+
+**Hallazgo a revisar en la etapa 08:** una operación del día no debería caer fuera del rango de ese día, y en los tipos con más operaciones lo hace entre 15% y 38% de las veces, sumando los dos lados. Que el proveedor y el dataset no midan el mismo universo de precios, por ejemplo por plazo de liquidación, es [HIPÓTESIS]. Por eso `position_vs_range` todavía no se puede leer como señal fuerte por sí sola.
 
 ## Sesgo de la fuente y comparabilidad
 Una operación sin serie válida por sesgo queda `SOURCE_BIASED`, o `SCALE_SUSPECT` si es por escala; no `UNAVAILABLE`. Sigue en el denominador de la cobertura: "no hay dato" y "hay dato, pero no sirve" son problemas distintos, y los dos se ven en `iol_ops.quote_coverage`.

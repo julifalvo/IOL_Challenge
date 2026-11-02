@@ -119,6 +119,11 @@ Descarga desde local, 2025-12-15..2026-03-13 [MEDIDO, 2026-11-01]. "Con filas" e
 
 **Trade-off:** el criterio 3 pedía fuente oficial antes que agregador, y gana un agregador personal porque la serie oficial no sirve como precio de mercado sin desajustar. Eso concentra el riesgo en data912. Si deja de estar disponible, los símbolos pasan solos a Yahoo o BYMA en la corrida siguiente, si validan; los bonos soberanos, en su mayoría, no van a validar. Gold pasa a YELLOW (G08, G09), no a RED.
 
+## Resultado (Free Edition, 2026-11-01) [MEDIDO]
+- **Series:** 2.936 candidatas. Elegidas: data912 252, Yahoo 339 y BYMA 147, en total 593 `OK` y 145 `THIN`. No elegibles: 684 `BIASED` (BYMA 621, Yahoo 55, data912 8) y 14 `SCALE_SUSPECT`.
+- **Cobertura:** 93,8% de las operaciones elegibles. 2.051 operaciones sin dato, y 4.180 excluidas por validación. El detalle está en `docs/quote_coverage.md`.
+- **Por API desde Free Edition:** 600 pedidos del primer lote, con 3 errores (BYMA 1, Yahoo 2), unos 10 minutos por lote de 200 por proveedor. El registro de esos 3 se pisó al completarlos desde el Volume: `quote_requests` guarda el último intento de cada pedido. La corrida completa se estima en unos 80 minutos, y **no se ejecutó entera**: el resto salió del Volume. Los 199 pedidos a BYMA sin error de ese lote volvieron vacíos, igual que los mismos símbolos en local, así que BYMA por API solo está probado con filas en el spike.
+
 **Mapeo inicial en `config.PROVIDER_RULES`:** la etapa 04 corre antes y deja cada símbolo `UNVERIFIED`. La etapa 05 pisa proveedor, símbolo y factor con la serie elegida, y deja `MAPPED`, o `UNSUPPORTED` si no hay ninguna.
 
 **API de IOL:** no evaluada. Requiere credenciales personales y se decidió no usarlas en este proyecto (2026-11-01). Podría ser una mejor opción si da los bonos sin ajustar; queda como mejora futura.
